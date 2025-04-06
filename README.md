@@ -20,11 +20,6 @@ The popup is the user interface that appears when you click the extension icon i
 
 ## Development Setup
 
-### Prerequisites
-- Node.js (v14 or higher)
-- npm (Node Package Manager)
-- Chrome browser
-
 ### Installation
 
 1. Clone the repository:
@@ -75,14 +70,6 @@ CanvasToNotion/
 ├── public/          # Static assets
 └── dist/           # Built extension (generated)
 ```
-
-## Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
 
 ## License
 
