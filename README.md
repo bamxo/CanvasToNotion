@@ -1,54 +1,89 @@
-# React + TypeScript + Vite
+# Canvas To Notion Chrome Extension
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This Chrome extension allows you to seamlessly transfer content from Canvas to Notion. 
 
-Currently, two official plugins are available:
+## Components Overview
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+### Background Script
+The background script runs in the background of the Chrome browser and manages the extension's core functionality. It:
+- Handles communication between different parts of the extension
+- Manages API calls to Notion
+- Processes data from Canvas before sending to Notion
+- Runs independently of any open webpage
 
-## Expanding the ESLint configuration
+### Popup
+The popup is the user interface that appears when you click the extension icon in Chrome. It:
+- Provides user controls and settings
+- Shows the current status of the extension
+- Allows users to configure Notion integration
+- Acts as the frontend interface for user interaction
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Development Setup
 
-```js
-export default tseslint.config({
-  extends: [
-    // Remove ...tseslint.configs.recommended and replace with this
-    ...tseslint.configs.recommendedTypeChecked,
-    // Alternatively, use this for stricter rules
-    ...tseslint.configs.strictTypeChecked,
-    // Optionally, add this for stylistic rules
-    ...tseslint.configs.stylisticTypeChecked,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
+### Prerequisites
+- Node.js (v14 or higher)
+- npm (Node Package Manager)
+- Chrome browser
+
+### Installation
+
+1. Clone the repository:
+```bash
+git clone https://github.com/yourusername/CanvasToNotion.git
+cd CanvasToNotion
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default tseslint.config({
-  plugins: {
-    // Add the react-x and react-dom plugins
-    'react-x': reactX,
-    'react-dom': reactDom,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended typescript rules
-    ...reactX.configs['recommended-typescript'].rules,
-    ...reactDom.configs.recommended.rules,
-  },
-})
+2. Install dependencies:
+```bash
+npm install
 ```
+
+### Development Workflow
+
+1. Build the extension:
+```bash
+npm run build
+```
+This will create a `dist` folder containing the built extension files.
+
+2. Load the extension in Chrome:
+   - Open Chrome and navigate to `chrome://extensions/`
+   - Enable "Developer mode" in the top right corner
+   - Click "Load unpacked" in the top left
+   - Select the `dist` folder from your project directory
+
+3. Making Changes:
+   - After making changes to the code, run `npm run build` again
+   - Go to the extension card in `chrome://extensions/`
+   - Click the refresh icon in the bottom right of the Canvas to Notion card
+
+### Development Commands
+
+- `npm run dev`: Start development server
+- `npm run build`: Build the extension
+- `npm run test`: Run tests
+- `npm run lint`: Run linter
+
+## Project Structure
+
+```
+CanvasToNotion/
+├── src/              # Source code
+│   ├── background/   # Background script
+│   ├── popup/       # Popup interface
+│   └── content/     # Content scripts
+├── public/          # Static assets
+└── dist/           # Built extension (generated)
+```
+
+## Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
