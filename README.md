@@ -56,7 +56,12 @@ This will create a `dist` folder containing the built extension files.
 
 - `npm run dev`: Start development server
 - `npm run build`: Build the extension
-- `npm run test`: Run tests
+- `npm run test`: Run all tests with coverage
+- `npm run test:watch`: Run tests in watch mode with coverage
+- `npm run test:ui`: Run tests with UI interface and coverage
+- `npm run test:popup`: Run tests only for popup component
+- `npm run test:content`: Run tests only for content scripts
+- `npm run test:background`: Run tests only for background scripts
 - `npm run lint`: Run linter
 
 ## Project Structure

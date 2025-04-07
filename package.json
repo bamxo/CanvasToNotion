@@ -11,7 +11,10 @@
     "preview": "vite preview",
     "test": "vitest run --coverage",
     "test:watch": "vitest --coverage",
-    "test:ui": "vitest --ui --coverage"
+    "test:ui": "vitest --ui --coverage",
+    "test:popup": "vitest run src/popup/**/*.test.{ts,tsx} --coverage",
+    "test:content": "vitest run src/content/**/*.test.{ts,tsx} --coverage",
+    "test:background": "vitest run src/background/**/*.test.{ts,tsx} --coverage"
   },
   "dependencies": {
     "react": "^18.2.0",
