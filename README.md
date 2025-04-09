@@ -24,7 +24,7 @@ The popup is the user interface that appears when you click the extension icon i
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/CanvasToNotion.git
+git clone https://github.com/bamxo/CanvasToNotion.git
 cd CanvasToNotion
 ```
 
