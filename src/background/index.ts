@@ -1,84 +1,41 @@
-// Background service worker
-console.log('Canvas to Notion: Background service worker initialized');
+// src/background/index.ts
+import { canvasApi } from '../services/canvas/api';
 
-// Store for authentication state
-let isAuthenticated = false;
-
-// Listen for messages from content script or popup
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  switch (request.action) {
-    case 'pageLoaded':
-      handlePageLoaded(request, sender);
-      break;
-    
-    case 'authenticate':
-      handleAuthentication(request, sendResponse);
-      break;
-    
-    case 'syncToNotion':
-      handleNotionSync(request, sendResponse);
-      break;
-  }
-  return true; // Required for async response
-});
-
-// Handle new page loads
-async function handlePageLoaded(request, sender) {
-  if (request.type === 'assignments') {
-    // Get assignments from the page
-    const response = await chrome.tabs.sendMessage(sender.tab.id, {
-      action: 'getAssignments'
-    });
-    
-    if (response?.assignments) {
-      // Store assignments in extension storage
-      chrome.storage.local.set({
-        lastAssignments: response.assignments,
-        lastSync: new Date().toISOString()
+// Listen for messages from the popup
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  // This ensures we can use async/await with the message handler
+  (async () => {
+    try {
+      if (message.action === 'fetchCourses') {
+        const courses = await canvasApi.getRecentCourses();
+        sendResponse({ success: true, data: courses });
+      } 
+      else if (message.action === 'fetchAssignments') {
+        const assignments = await canvasApi.getAllAssignments(message.courses);
+        sendResponse({ success: true, data: assignments });
+      }
+      else if (message.action === 'fetchAll') {
+        const courses = await canvasApi.getRecentCourses();
+        const assignments = await canvasApi.getAllAssignments(courses);
+        sendResponse({ success: true, data: { courses, assignments } });
+      }
+      else {
+        sendResponse({ success: false, error: 'Unknown action' });
+      }
+    } catch (error) {
+      console.error('Error in background script:', error);
+      sendResponse({ 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Unknown error'
       });
     }
-  }
-}
+  })();
+  
+  // Return true to indicate we'll respond asynchronously
+  return true;
+});
 
-// Handle authentication with Notion
-async function handleAuthentication(request, sendResponse) {
-  try {
-    // Here you would implement Notion OAuth flow
-    // For now, we'll just store the token if provided
-    if (request.notionToken) {
-      await chrome.storage.local.set({ notionToken: request.notionToken });
-      isAuthenticated = true;
-      sendResponse({ success: true });
-    }
-  } catch (error) {
-    console.error('Authentication error:', error);
-    sendResponse({ success: false, error: error.message });
-  }
-}
-
-// Handle syncing to Notion
-async function handleNotionSync(request, sendResponse) {
-  try {
-    const { notionToken } = await chrome.storage.local.get('notionToken');
-    if (!notionToken) {
-      throw new Error('Not authenticated with Notion');
-    }
-
-    const { lastAssignments } = await chrome.storage.local.get('lastAssignments');
-    if (!lastAssignments) {
-      throw new Error('No assignments to sync');
-    }
-
-    // Here you would implement the actual Notion API calls
-    // For now, we'll just simulate success
-    await chrome.storage.local.set({ lastSyncTime: new Date().toISOString() });
-    
-    sendResponse({ 
-      success: true, 
-      message: `Synced ${lastAssignments.length} assignments to Notion` 
-    });
-  } catch (error) {
-    console.error('Sync error:', error);
-    sendResponse({ success: false, error: error.message });
-  }
-} 
+// Listen for installation
+chrome.runtime.onInstalled.addListener(() => {
+  console.log('Canvas to Notion extension installed');
+});

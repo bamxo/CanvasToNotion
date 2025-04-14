@@ -1,32 +1,76 @@
 import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
 import './App.css'
+import { canvasDataApi } from './services/chrome-communication.ts'
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [userData, setUserData] = useState<any[]>([])
+  const [assignments, setAssignments] = useState<any[]>([])
+  const [loading, setLoading] = useState<boolean>(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const fetchUserDataAndAssignments = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      
+      // Use our backend service to fetch data
+      const { courses, assignments } = await canvasDataApi.fetchAll()
+      
+      setUserData(courses)
+      setAssignments(assignments)
+      console.log('Courses:', courses)
+      console.log('Assignments:', assignments)
+    } catch (err) {
+      console.error(err)
+      setError('Failed to fetch courses or assignments.')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
+      <h1>Canvas to Notion</h1>
       <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
+        <button onClick={fetchUserDataAndAssignments} disabled={loading}>
+          {loading ? 'Loading...' : 'Get All Assignments'}
         </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
+
+        {/* 
+          You can delete these next lines if you don't want to show the assignments in the 
+          popup. It was just to make it visually easier for testing—it still gets logged to console.
+        */}
+
+        {error && <div className="error-message">{error}</div>}
+
+        {userData.length > 0 && (
+          <div className="user-data">
+            <h2>Current Courses</h2>
+            <pre>{JSON.stringify(userData.map(c => c.name), null, 2)}</pre>
+          </div>
+        )}
+
+        {assignments.length > 0 && (
+          <div className="assignments">
+            <h2>All Assignments</h2>
+            <ul>
+              {assignments.map((assignment) => (
+                <li key={assignment.id}>
+                  <h3>{assignment.name}</h3>
+                  <p><strong>Course:</strong> {assignment.courseName}</p>
+                  <div dangerouslySetInnerHTML={{ __html: assignment.description || '' }} />
+                  <p><strong>Due:</strong> {assignment.due_at || 'N/A'}</p>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* end of delete for showing assignments in popup */}
       </div>
+
       <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
+        Canvas to Notion Extension
       </p>
     </>
   )
