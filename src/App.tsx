@@ -1,78 +1,102 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import './App.css'
-import { canvasDataApi } from './services/chrome-communication.ts'
+import FetchAssignments from './popup/components/FetchAssignments'
+import LoginRedirect from './popup/components/LoginRedirect'
+import Dashboard from './popup/components/Dashboard'
 
 function App() {
-  const [userData, setUserData] = useState<any[]>([])
-  const [assignments, setAssignments] = useState<any[]>([])
-  const [loading, setLoading] = useState<boolean>(false)
-  const [error, setError] = useState<string | null>(null)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [isGuestMode, setIsGuestMode] = useState(false)
+  const [checkingAuth, setCheckingAuth] = useState(true)
+  const [isCanvasPage, setIsCanvasPage] = useState(false)
 
-  const fetchUserDataAndAssignments = async () => {
-    try {
-      setLoading(true)
-      setError(null)
-      
-      // Use our backend service to fetch data
-      const { courses, assignments } = await canvasDataApi.fetchAll()
-      
-      setUserData(courses)
-      setAssignments(assignments)
-      console.log('Courses:', courses)
-      console.log('Assignments:', assignments)
-    } catch (err) {
-      console.error(err)
-      setError('Failed to fetch courses or assignments.')
-    } finally {
-      setLoading(false)
-    }
+  useEffect(() => {
+    // Check if current page is Canvas
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      const currentUrl = tabs[0]?.url || '';
+      console.log('Current URL:', currentUrl);
+      const isCanvas = currentUrl.includes('canvas');
+      console.log('Is Canvas page:', isCanvas);
+      setIsCanvasPage(isCanvas);
+    });
+
+    // Check initial state
+    chrome.storage.local.get(['canvasToken', 'isGuestMode'], (result) => {
+      console.log('Initial state:', result);
+      setIsAuthenticated(!!result.canvasToken);
+      setIsGuestMode(!!result.isGuestMode);
+      setCheckingAuth(false);
+    });
+
+    // Listen for storage changes
+    const handleStorageChange = (changes: { [key: string]: chrome.storage.StorageChange }) => {
+      console.log('Storage changes:', changes);
+      if (changes.isGuestMode) {
+        setIsGuestMode(!!changes.isGuestMode.newValue);
+      }
+      if (changes.canvasToken) {
+        setIsAuthenticated(!!changes.canvasToken.newValue);
+      }
+    };
+
+    // Listen for auth state changes via messages
+    const messageListener = (message: any) => {
+      console.log('Received message in App:', message);
+      if (message.type === 'LOGIN_SUCCESS') {
+        console.log('Setting authenticated to true');
+        setIsAuthenticated(true);
+      } else if (message.type === 'LOGOUT') {
+        console.log('Logout message received, resetting state...');
+        setIsAuthenticated(false);
+        setIsGuestMode(false);
+      }
+    };
+
+    // Add listeners
+    console.log('Setting up listeners...');
+    chrome.storage.onChanged.addListener(handleStorageChange);
+    chrome.runtime.onMessage.addListener(messageListener);
+
+    // Cleanup listeners on unmount
+    return () => {
+      console.log('Cleaning up listeners...');
+      chrome.storage.onChanged.removeListener(handleStorageChange);
+      chrome.runtime.onMessage.removeListener(messageListener);
+    };
+  }, []);
+
+  if (checkingAuth) {
+    return <div>Loading...</div>
   }
 
+  const containerClasses = [
+    'extension-container',
+    isAuthenticated ? 'authenticated' : '',
+  ].filter(Boolean).join(' ');
+
+  // Determine container height based on state
+  const containerStyle = {
+    height: isAuthenticated ? 'auto' : !isCanvasPage ? '420px' : '388px',
+    minHeight: isAuthenticated ? '388px' : undefined,
+    overflow: isAuthenticated || isGuestMode ? 'auto' : 'hidden',
+    transition: 'height 0.3s ease'
+  };
+
+  console.log('Container style:', containerStyle);
+  console.log('Is Canvas page (render):', isCanvasPage);
+
   return (
-    <>
-      <h1>Canvas to Notion</h1>
+    <div className={containerClasses} style={containerStyle}>
       <div className="card">
-        <button onClick={fetchUserDataAndAssignments} disabled={loading}>
-          {loading ? 'Loading...' : 'Get All Assignments'}
-        </button>
-
-        {/* 
-          You can delete these next lines if you don't want to show the assignments in the 
-          popup. It was just to make it visually easier for testing—it still gets logged to console.
-        */}
-
-        {error && <div className="error-message">{error}</div>}
-
-        {userData.length > 0 && (
-          <div className="user-data">
-            <h2>Current Courses</h2>
-            <pre>{JSON.stringify(userData.map(c => c.name), null, 2)}</pre>
-          </div>
+        {isAuthenticated ? (
+          <FetchAssignments />
+        ) : isGuestMode ? (
+          <Dashboard />
+        ) : (
+          <LoginRedirect onGuestClick={() => setIsGuestMode(true)} />
         )}
-
-        {assignments.length > 0 && (
-          <div className="assignments">
-            <h2>All Assignments</h2>
-            <ul>
-              {assignments.map((assignment) => (
-                <li key={assignment.id}>
-                  <h3>{assignment.name}</h3>
-                  <p><strong>Course:</strong> {assignment.courseName}</p>
-                  <div dangerouslySetInnerHTML={{ __html: assignment.description || '' }} />
-                  <p><strong>Due:</strong> {assignment.due_at || 'N/A'}</p>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {/* end of delete for showing assignments in popup */}
       </div>
-
-      <p className="read-the-docs">
-        Canvas to Notion Extension
-      </p>
-    </>
+    </div>
   )
 }
 
