@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import './App.css'
-import FetchAssignments from './popup/components/FetchAssignments'
 import LoginRedirect from './popup/components/LoginRedirect'
 import Dashboard from './popup/components/Dashboard'
 
@@ -89,7 +88,7 @@ function App() {
     <div className={containerClasses} style={containerStyle}>
       <div className="card">
         {isAuthenticated ? (
-          <FetchAssignments />
+          <Dashboard />
         ) : isGuestMode ? (
           <Dashboard />
         ) : (

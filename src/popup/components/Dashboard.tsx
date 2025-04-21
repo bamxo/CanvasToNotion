@@ -46,7 +46,7 @@ const Dashboard = () => {
       } else {
         console.log('Logout state saved successfully');
         // Also send message for immediate UI update
-        chrome.runtime.sendMessage({ type: 'LOGOUT' }, (response) => {
+        chrome.runtime.sendMessage({ type: 'LOGOUT' }, () => {
           if (chrome.runtime.lastError) {
             console.error('Error sending logout message:', chrome.runtime.lastError);
           } else {
