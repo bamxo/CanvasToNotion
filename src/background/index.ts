@@ -1,23 +1,21 @@
 // src/background/index.ts
 import { canvasApi } from '../services/canvas/api';
+import { syncCanvasDataForUser } from '../services/syncToFirebase';
 
 // Listen for messages from the popup
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   // This ensures we can use async/await with the message handler
   (async () => {
     try {
-      if (message.action === 'fetchCourses') {
-        const courses = await canvasApi.getRecentCourses();
-        sendResponse({ success: true, data: courses });
-      } 
-      else if (message.action === 'fetchAssignments') {
-        const assignments = await canvasApi.getAllAssignments(message.courses);
-        sendResponse({ success: true, data: assignments });
-      }
-      else if (message.action === 'fetchAll') {
+      if (message.action === 'fetchAll') {
         const courses = await canvasApi.getRecentCourses();
         const assignments = await canvasApi.getAllAssignments(courses);
         sendResponse({ success: true, data: { courses, assignments } });
+        const payload = {
+          courses,
+          assignments,
+        };
+        syncCanvasDataForUser(payload);
       }
       else {
         sendResponse({ success: false, error: 'Unknown action' });

@@ -22,13 +22,13 @@ export function sendMessage<T = any>(message: any): Promise<T> {
    * Canvas data api for the frontend
    */
   export const canvasDataApi = {
-  fetchCourses: async () => {
-    return sendMessage({ action: 'fetchCourses' });
-  },
-  fetchAssignments: async (courses: any[]) => {
-    return sendMessage({ action: 'fetchAssignments', courses });
-  },
-  fetchAll: async () => {
-    return sendMessage({ action: 'fetchAll' });
-  }
-};
+    fetchAll: async () => {
+      return sendMessage({ action: 'fetchAll' });
+    },
+    
+    syncCanvasData: async (userId: string) => {
+      // Send the sync message to the background
+      return sendMessage({ type: 'SYNC_CANVAS_DATA', userId });
+    }
+  };
+  
