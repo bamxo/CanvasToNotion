@@ -26,9 +26,5 @@ export function sendMessage<T = any>(message: any): Promise<T> {
       return sendMessage({ action: 'fetchAll' });
     },
     
-    syncCanvasData: async (userId: string) => {
-      // Send the sync message to the background
-      return sendMessage({ type: 'SYNC_CANVAS_DATA', userId });
-    }
   };
   
