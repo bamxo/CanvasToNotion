@@ -5,7 +5,7 @@ import { auth, db } from './firebaseConfig'; // Correct path to firebaseConfig
 import { ref, set } from 'firebase/database';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 
-export const syncCanvasDataForUser = async (payload: { assignments: any[] }) => {
+export const syncCanvasDataForUser = async (payload: { courses: any[], assignments: any[] }) => {
   try {
     const email = 'test1@example.com';
     const password = 'password123';
@@ -17,6 +17,7 @@ export const syncCanvasDataForUser = async (payload: { assignments: any[] }) => 
 
     const dataToStore = {
       timestamp: new Date().toISOString(),
+      courses: payload.courses,
       assignments: payload.assignments,
     };
 

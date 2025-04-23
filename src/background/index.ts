@@ -1,6 +1,6 @@
 // src/background/index.ts
 import { canvasApi } from '../services/canvas/api';
-import { syncCanvasDataForUser } from '../services/syncToFirebase';
+import { syncCanvasDataToNotion } from '../services/notion/syncToNotion';
 
 // Listen for messages from the popup
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
@@ -15,7 +15,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           courses,
           assignments,
         };
-        syncCanvasDataForUser(payload);
+        await syncCanvasDataToNotion(payload);
       }
       else {
         sendResponse({ success: false, error: 'Unknown action' });

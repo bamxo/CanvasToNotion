@@ -17,6 +17,7 @@
     "test:background": "vitest run src/background/**/*.test.{ts,tsx} --coverage"
   },
   "dependencies": {
+    "@notionhq/client": "^2.3.0",
     "axios": "^1.8.4",
     "firebase": "^11.6.0",
     "react": "^18.2.0",
