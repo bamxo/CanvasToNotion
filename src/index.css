@@ -50,9 +50,19 @@ button {
 button:hover {
   border-color: #646cff;
 }
-button:focus,
+button:focus {
+  outline: none;
+  border-color: #646cff;
+  box-shadow: 0 0 0 2px rgba(100, 108, 255, 0.4);
+}
+button:focus:not(:focus-visible) {
+  outline: none;
+  box-shadow: none;
+}
 button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+  outline: none;
+  border-color: #646cff;
+  box-shadow: 0 0 0 2px rgba(100, 108, 255, 0.4);
 }
 
 @media (prefers-color-scheme: light) {
