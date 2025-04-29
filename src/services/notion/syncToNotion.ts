@@ -10,7 +10,7 @@ const NOTION_PAGE_ID = '1de02247-9eba-807b-9106-d196a89024f6';
 export const syncCanvasDataToNotion = async (payload: { courses: any[], assignments: any[] }) => {
   try {
     const { courses, assignments } = payload;
-    console.log('📝 Starting sync to Notion...');
+    console.log(payload);
     
     // Map to store course ID to database ID mapping
     const courseDatabases = new Map<number, string>();
@@ -148,8 +148,18 @@ export const syncCanvasDataToNotion = async (payload: { courses: any[], assignme
 };
 
 // Helper function to strip HTML tags from text
+// Replace the current stripHtmlTags function with this DOM-independent version
 const stripHtmlTags = (html: string): string => {
-  const temp = document.createElement('div');
-  temp.innerHTML = html;
-  return temp.textContent || temp.innerText || '';
+  if (!html) return '';
+  
+  // Use regex to remove HTML tags
+  return html
+    .replace(/<[^>]*>/g, '') // Remove HTML tags
+    .replace(/&nbsp;/g, ' ')  // Replace &nbsp; with spaces
+    .replace(/&amp;/g, '&')   // Replace &amp; with &
+    .replace(/&lt;/g, '<')    // Replace &lt; with <
+    .replace(/&gt;/g, '>')    // Replace &gt; with >
+    .replace(/&quot;/g, '"')  // Replace &quot; with "
+    .replace(/&#39;/g, "'")   // Replace &#39; with '
+    .trim();                  // Trim whitespace
 };

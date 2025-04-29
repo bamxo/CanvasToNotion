@@ -3,13 +3,6 @@ interface Course {
   name: string;
   code: string;
   workflow_state: string;
-  created_at: string;
-  start_at: string | null;
-  end_at: string | null;
-  enrollments?: {
-    type: string;
-    enrollment_state: string;
-  }[];
 }
 
 interface Assignment {
@@ -19,9 +12,8 @@ interface Assignment {
   due_at: string | null;
   points_possible: number;
   courseId: number;
-  courseName?: string;
+  courseName: string;
   html_url: string;
-  submission_types: string[];
 }
 
 export class CanvasApi {
@@ -72,7 +64,13 @@ export class CanvasApi {
       return isRecent && isAvailable && isStudent;
     });
 
-    return filteredCourses;
+    // Only return the fields we need
+    return filteredCourses.map(course => ({
+      id: course.id,
+      name: course.name,
+      code: course.course_code || '',
+      workflow_state: course.workflow_state
+    }));
   }
 
   async getAllAssignments(courses: Course[]): Promise<Assignment[]> {
@@ -85,13 +83,19 @@ export class CanvasApi {
 
         const courseAssignments = await response.json();
 
-        allAssignments.push(
-          ...courseAssignments.map((assignment: any) => ({
-            ...assignment,
-            courseName: course.name,
-            courseId: course.id,
-          }))
-        );
+        // Only add the fields we need
+        const formattedAssignments = courseAssignments.map((assignment: any) => ({
+          id: assignment.id,
+          name: assignment.name,
+          description: this.stripHtmlTags(assignment.description),
+          due_at: assignment.due_at,
+          points_possible: assignment.points_possible,
+          courseId: course.id,
+          courseName: course.name,
+          html_url: assignment.html_url
+        }));
+
+        allAssignments.push(...formattedAssignments);
       } catch (err) {
         console.error(`Failed to fetch assignments for course ${course.id}:`, err);
       }
@@ -100,6 +104,20 @@ export class CanvasApi {
     return allAssignments;
   }
 
+  // Helper function to strip HTML tags from text
+  private stripHtmlTags(html: string | null): string | null {
+    if (!html) return null;
+    
+    return html
+      .replace(/<[^>]*>/g, '') // Remove HTML tags
+      .replace(/&nbsp;/g, ' ')  // Replace &nbsp; with spaces
+      .replace(/&amp;/g, '&')   // Replace &amp; with &
+      .replace(/&lt;/g, '<')    // Replace &lt; with 
+      .replace(/&gt;/g, '>')    // Replace &gt; with >
+      .replace(/&quot;/g, '"')  // Replace &quot; with "
+      .replace(/&#39;/g, "'")   // Replace &#39; with '
+      .trim();                  // Trim whitespace
+  }
 }
 
 // Export a singleton instance
