@@ -43,6 +43,7 @@ export class CanvasApi {
       if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
 
       const pageCourses = await response.json();
+      console.log(pageCourses)
       allCourses = allCourses.concat(pageCourses);
 
       const linkHeader = response.headers.get('Link');
@@ -82,6 +83,7 @@ export class CanvasApi {
         if (!response.ok) continue;
 
         const courseAssignments = await response.json();
+        console.log(courseAssignments)
 
         // Only add the fields we need
         const formattedAssignments = courseAssignments.map((assignment: any) => ({
