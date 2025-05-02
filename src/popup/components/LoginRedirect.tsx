@@ -9,6 +9,7 @@
 import { useState, useEffect } from 'react'
 import styles from './LoginRedirect.module.css'
 import logo from '../../assets/c2n_logo dark.svg'
+import EmailLogin from './EmailLogin'
 
 interface LoginRedirectProps {
   onGuestClick: () => void;
@@ -30,6 +31,7 @@ const LoginRedirect = ({ onGuestClick }: LoginRedirectProps) => {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isCanvasPage, setIsCanvasPage] = useState(false)
+  const [showEmailLogin, setShowEmailLogin] = useState(false)
 
   useEffect(() => {
     // Check if the current tab is a Canvas page by examining the URL
@@ -38,7 +40,9 @@ const LoginRedirect = ({ onGuestClick }: LoginRedirectProps) => {
       setIsCanvasPage(currentUrl.includes('canvas'));
     });
   }, []);
-
+  const handleEmailLoginSuccess = () => {
+    onGuestClick(); // This will redirect to dashboard since it updates the state
+  };
   /**
    * Handles the login process by:
    * 1. Opening the webapp login page in a new tab
@@ -77,7 +81,14 @@ const LoginRedirect = ({ onGuestClick }: LoginRedirectProps) => {
   const particles = Array.from({ length: 20 }, (_, i) => (
     <Particle key={i} delay={i * 0.3} />
   ));
-
+  if (showEmailLogin) {
+    return (
+      <EmailLogin 
+        onBack={() => setShowEmailLogin(false)}
+        onLoginSuccess={handleEmailLoginSuccess}
+      />
+    );
+  }
   return (
     <div className={`${styles.container} ${isCanvasPage ? styles.canvasContainer : styles.nonCanvasContainer}`}>
       {particles}
@@ -107,6 +118,12 @@ const LoginRedirect = ({ onGuestClick }: LoginRedirectProps) => {
         className={styles.signInButton}
       >
         {isLoading ? 'Redirecting...' : 'Sign In'}
+      </button>
+      <button 
+        onClick={() => setShowEmailLogin(true)}
+        className={styles.emailSignInButton}
+      >
+        Sign In with Email
       </button>
 
       {/* Guest access option */}
