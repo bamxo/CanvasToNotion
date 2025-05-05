@@ -2,12 +2,14 @@ import { useState, useEffect } from 'react'
 import './App.css'
 import LoginRedirect from './popup/components/LoginRedirect'
 import Dashboard from './popup/components/Dashboard'
+import PageSelector from './popup/components/PageSelector'
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [isGuestMode, setIsGuestMode] = useState(false)
   const [checkingAuth, setCheckingAuth] = useState(true)
   const [isCanvasPage, setIsCanvasPage] = useState(false)
+  const [selectedPage, setSelectedPage] = useState(false)
 
   useEffect(() => {
     // Check if current page is Canvas
@@ -20,10 +22,11 @@ function App() {
     });
 
     // Check initial state
-    chrome.storage.local.get(['canvasToken', 'isGuestMode'], (result) => {
+    chrome.storage.local.get(['canvasToken', 'isGuestMode', 'selectedPage'], (result) => {
       console.log('Initial state:', result);
       setIsAuthenticated(!!result.canvasToken);
       setIsGuestMode(!!result.isGuestMode);
+      setSelectedPage(!!result.selectedPage);
       setCheckingAuth(false);
     });
 
@@ -35,6 +38,9 @@ function App() {
       }
       if (changes.canvasToken) {
         setIsAuthenticated(!!changes.canvasToken.newValue);
+      }
+      if (changes.selectedPage) {
+        setSelectedPage(!!changes.selectedPage.newValue);
       }
     };
 
@@ -48,6 +54,7 @@ function App() {
         console.log('Logout message received, resetting state...');
         setIsAuthenticated(false);
         setIsGuestMode(false);
+        setSelectedPage(false);
       }
     };
 
@@ -87,12 +94,15 @@ function App() {
   return (
     <div className={containerClasses} style={containerStyle}>
       <div className="card">
-        {isAuthenticated ? (
-          <Dashboard />
-        ) : isGuestMode ? (
+        {!isAuthenticated && !isGuestMode ? (
+          <LoginRedirect onGuestClick={() => setIsGuestMode(true)} />
+        ) : selectedPage ? (
           <Dashboard />
         ) : (
-          <LoginRedirect onGuestClick={() => setIsGuestMode(true)} />
+          <PageSelector onPageSelect={() => {
+            chrome.storage.local.set({ selectedPage: true });
+            setSelectedPage(true);
+          }} />
         )}
       </div>
     </div>

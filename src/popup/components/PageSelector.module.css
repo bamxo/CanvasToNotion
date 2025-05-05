@@ -1,0 +1,148 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
+
+.container {
+  min-width: 368px;
+  font-family: 'Poppins', sans-serif;
+  display: flex;
+  flex-direction: column;
+  color: white;
+  background: #1a1a1a;
+  min-height: 100vh;
+  padding: 2em;
+  box-sizing: border-box;
+}
+
+.content {
+  padding: 4em 2em 2em;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  margin-top: -2em;
+}
+
+.headerContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.logo {
+  width: 180px;
+  height: auto;
+  margin-bottom: 8px;
+}
+
+.title {
+  color: #FFFFFF;
+  font-size: 20px;
+  font-weight: 500;
+  margin: 0;
+}
+
+.subtext {
+  color: #CBCBCA;
+  font-size: 15px;
+  margin: 0;
+  font-weight: 400;
+  max-width: 300px;
+  text-align: center;
+}
+
+.pageList {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 300px;
+  overflow-y: auto;
+  padding-right: 10px;
+  margin: 10px 0;
+}
+
+.pageList::-webkit-scrollbar {
+  width: 6px;
+}
+
+.pageList::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+.pageItem {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 7px;
+  padding: 12px;
+  color: #FFFFFF;
+  font-size: 14px;
+  font-weight: 400;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  transition: background-color 0.2s, border-color 0.2s;
+}
+
+.pageItem:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.pageIcon {
+  font-size: 16px;
+  min-width: 20px;
+}
+
+.pageTitle {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.createPageItem {
+  border-style: dashed;
+  margin-bottom: 8px;
+}
+
+.createPageItem .pageIcon {
+  font-size: 20px;
+  font-weight: 300;
+}
+
+.createPageItem:hover {
+  background: rgba(255, 106, 44, 0.1);
+  border-color: rgba(255, 106, 44, 0.3);
+}
+
+.createPageButton {
+  background: linear-gradient(90deg, #FF6A2C 0%, #EF5223 100%);
+  border: none;
+  border-radius: 7px;
+  padding: 12px 40px;
+  cursor: pointer;
+  font-family: 'Poppins', sans-serif;
+  font-size: 15px;
+  font-weight: 500;
+  color: #FFFFFF;
+  transition: opacity 0.2s;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.createPageButton:hover {
+  opacity: 0.9;
+}
+
+.plusIcon {
+  width: 16px;
+  height: 16px;
+} 
