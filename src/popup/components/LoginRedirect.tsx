@@ -89,6 +89,7 @@ const LoginRedirect = ({ onGuestClick }: LoginRedirectProps) => {
       />
     );
   }
+
   return (
     <div className={`${styles.container} ${isCanvasPage ? styles.canvasContainer : styles.nonCanvasContainer}`}>
       {particles}

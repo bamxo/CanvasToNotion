@@ -1,17 +1,34 @@
 import { useState } from 'react';
 import { signInWithEmail } from '../../services/auth.service';
 import styles from './EmailLogin.module.css';
+import logo from '../../assets/c2n_logo dark.svg';
 
 interface EmailLoginProps {
   onBack: () => void;
   onLoginSuccess: () => void;
 }
 
+// Particle component
+const Particle = ({ delay }: { delay: number }) => {
+  const style = {
+    left: `${Math.random() * 100}%`,
+    animation: `${styles.floatParticle} 6s ease-in infinite`,
+    animationDelay: `${delay}s`
+  };
+
+  return <div className={styles.particle} style={style} />;
+};
+
 const EmailLogin: React.FC<EmailLoginProps> = ({ onBack, onLoginSuccess }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Generate array of particles
+  const particles = Array.from({ length: 20 }, (_, i) => (
+    <Particle key={i} delay={i * 0.3} />
+  ));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,43 +50,53 @@ const EmailLogin: React.FC<EmailLoginProps> = ({ onBack, onLoginSuccess }) => {
   };
 
   return (
-    <div className={styles.container}>
-      <button onClick={onBack} className={styles.backButton}>
-        ← Back
+    <>
+      <button 
+        type="button"
+        onClick={onBack} 
+        className={styles.backButton}
+      >
+        ← Return
       </button>
-      
-      <h2>Sign in with Email</h2>
-      
-      <form onSubmit={handleSubmit} className={styles.form}>
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          className={styles.input}
-        />
+
+      <div className={styles.container}>
+        {particles}
         
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          className={styles.input}
-        />
+        <div className={styles.headerContainer}>
+          <img src={logo} alt="Canvas to Notion Logo" className={styles.logo} />
+        </div>
         
-        {error && <div className={styles.error}>{error}</div>}
-        
-        <button 
-          type="submit" 
-          disabled={isLoading}
-          className={styles.submitButton}
-        >
-          {isLoading ? 'Signing in...' : 'Sign In'}
-        </button>
-      </form>
-    </div>
+        <form onSubmit={handleSubmit} className={styles.form}>
+          <input
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            className={styles.input}
+          />
+          
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            className={styles.input}
+          />
+          
+          {error && <div className={styles.error}>{error}</div>}
+          
+          <button 
+            type="submit" 
+            disabled={isLoading}
+            className={styles.submitButton}
+          >
+            {isLoading ? 'Signing in...' : 'Sign In'}
+          </button>
+        </form>
+      </div>
+    </>
   );
 };
 

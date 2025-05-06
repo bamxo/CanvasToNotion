@@ -9,6 +9,13 @@ import { useState } from 'react'
 import styles from './Dashboard.module.css'
 import { canvasDataApi } from '../../services/chrome-communication'
 import AppBar from './AppBar'
+import PageSelector from './PageSelector'
+
+interface NotionPage {
+  id: string;
+  title: string;
+  icon?: string;
+}
 
 const Dashboard = () => {
   const [isLoading, setIsLoading] = useState(false)
@@ -16,6 +23,8 @@ const Dashboard = () => {
   const [syncStatus, setSyncStatus] = useState<'success' | 'error' | null>(null)
   const [courses, setCourses] = useState<any[]>([])
   const [assignments, setAssignments] = useState<any[]>([])
+  const [showPageSelector, setShowPageSelector] = useState(false)
+  const [selectedPage, setSelectedPage] = useState<NotionPage | null>(null)
 
   const handleSync = async () => {
     try {
@@ -37,38 +46,44 @@ const Dashboard = () => {
     }
   }
 
-  const handleLogout = () => {
-    console.log('Attempting to logout...');
-    // Use chrome.storage to manage guest mode state
-    chrome.storage.local.set({ isGuestMode: false }, () => {
-      if (chrome.runtime.lastError) {
-        console.error('Error saving logout state:', chrome.runtime.lastError);
-      } else {
-        console.log('Logout state saved successfully');
-        // Also send message for immediate UI update
-        chrome.runtime.sendMessage({ type: 'LOGOUT' }, () => {
-          if (chrome.runtime.lastError) {
-            console.error('Error sending logout message:', chrome.runtime.lastError);
-          } else {
-            console.log('Logout message sent successfully');
-          }
-        });
-      }
-    });
+  const handlePageSelect = (page: NotionPage) => {
+    setSelectedPage(page)
+    setShowPageSelector(false)
   }
 
-  const handleSettings = () => {
-    // TODO: Implement settings logic
+  if (showPageSelector) {
+    return <PageSelector onPageSelect={handlePageSelect} />
   }
 
   return (
     <div className={styles.container}>
-      <AppBar 
-        onSettingsClick={handleSettings}
-        onLogoutClick={handleLogout}
-      />
+      <AppBar />
 
       <div className={styles.content}>
+        <div className={styles.pageSelectionContainer}>
+          {selectedPage ? (
+            <div className={styles.selectedPage}>
+              <div className={styles.pageInfo}>
+                {selectedPage.icon && <span className={styles.pageIcon}>{selectedPage.icon}</span>}
+                <span className={styles.pageTitle}>{selectedPage.title}</span>
+              </div>
+              <button 
+                onClick={() => setShowPageSelector(true)}
+                className={styles.changePage}
+              >
+                Change Page
+              </button>
+            </div>
+          ) : (
+            <button 
+              onClick={() => setShowPageSelector(true)}
+              className={styles.selectPageButton}
+            >
+              Select Notion Page
+            </button>
+          )}
+        </div>
+
         <div className={styles.statusContainer}>
           {lastSync && (
             <p className={styles.lastSync}>
@@ -89,7 +104,7 @@ const Dashboard = () => {
 
         <button 
           onClick={handleSync} 
-          disabled={isLoading}
+          disabled={isLoading || !selectedPage}
           className={styles.syncButton}
         >
           {isLoading ? 'Loading...' : 'Get All Assignments'}
