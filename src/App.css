@@ -1,8 +1,17 @@
 #root {
   max-width: 1280px;
   margin: 0 auto;
-  padding: 2rem;
+  /* padding: 2rem; */
   text-align: center;
+  overscroll-behavior: none;
+  overscroll-behavior-x: none;
+  overscroll-behavior-y: none;
+}
+
+html, body {
+  overscroll-behavior: none;
+  overscroll-behavior-x: none;
+  overscroll-behavior-y: none;
 }
 
 .logo {
@@ -34,7 +43,7 @@
 }
 
 .card {
-  padding: 2em;
+  /* padding: 2em; */
 }
 
 .read-the-docs {

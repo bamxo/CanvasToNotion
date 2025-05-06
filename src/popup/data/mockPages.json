@@ -1,0 +1,29 @@
+{
+  "pages": [
+    {
+      "id": "page1",
+      "title": "CSE 115A Notes",
+      "icon": "📚"
+    },
+    {
+      "id": "page2",
+      "title": "Study Materials",
+      "icon": "📝"
+    },
+    {
+      "id": "page3",
+      "title": "Project Documentation",
+      "icon": "📋"
+    },
+    {
+      "id": "page4",
+      "title": "Course Assignments",
+      "icon": "✅"
+    },
+    {
+      "id": "page5",
+      "title": "Personal Notes",
+      "icon": "📔"
+    }
+  ]
+} 

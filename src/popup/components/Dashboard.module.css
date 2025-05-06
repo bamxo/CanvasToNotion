@@ -1,0 +1,277 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
+
+.container {
+  width: 100%;
+  min-height: 100vh;
+  color: white;
+  font-family: 'Poppins', sans-serif;
+  padding: 2em;
+  max-width: 100%;
+  box-sizing: border-box;
+  margin: 0 auto;
+}
+
+.content {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.headerContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.logo {
+  width: 180px;
+  height: auto;
+  margin-bottom: 0;
+}
+
+.subtext {
+  color: #CBCBCA;
+  font-size: 15px;
+  margin: 0;
+  font-weight: 400;
+  max-width: 300px;
+}
+
+.statusContainer {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.lastSync {
+  color: #CBCBCA;
+  font-size: 13px;
+  margin: 0;
+}
+
+.successMessage {
+  color: #4CAF50;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.errorMessage {
+  color: #FF6A2C;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.syncButton {
+  background: linear-gradient(90deg, #FF6A2C 0%, #EF5223 100%);
+  border: none;
+  border-radius: 7px;
+  padding: 12px 40px;
+  cursor: pointer;
+  font-family: 'Poppins', sans-serif;
+  font-size: 15px;
+  font-weight: 500;
+  color: #FFFFFF;
+  transition: opacity 0.2s;
+  width: 280px;
+}
+
+.syncButton:hover {
+  opacity: 0.9;
+}
+
+.syncButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.settingsContainer {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.iconButton {
+  background: none;
+  border: none;
+  padding: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.iconButton:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+.iconButton img {
+  width: 24px;
+  height: 24px;
+}
+
+.dataSection {
+  width: 100%;
+  text-align: left;
+  margin-top: 10px;
+}
+
+.sectionTitle {
+  color: #FFFFFF;
+  font-size: 16px;
+  font-weight: 500;
+  margin: 0 0 10px 0;
+}
+
+.courseList, .assignmentList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+  padding-right: 10px;
+}
+
+.courseList::-webkit-scrollbar,
+.assignmentList::-webkit-scrollbar {
+  width: 6px;
+}
+
+.courseList::-webkit-scrollbar-thumb,
+.assignmentList::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+.courseItem {
+  color: #CBCBCA;
+  font-size: 14px;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 5px;
+}
+
+.assignmentItem {
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 5px;
+  margin-bottom: 8px;
+}
+
+.assignmentTitle {
+  color: #FFFFFF;
+  font-size: 14px;
+  font-weight: 500;
+  margin: 0 0 8px 0;
+}
+
+.assignmentDetail {
+  color: #CBCBCA;
+  font-size: 13px;
+  margin: 4px 0;
+}
+
+.assignmentDetail strong {
+  color: #FF6A2C;
+  font-weight: 500;
+}
+
+.pageSelectionContainer {
+  width: 100%;
+  max-width: 500px;
+  margin: 0 auto 16px;
+  display: flex;
+  justify-content: center;
+}
+
+.selectedPage {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 7px;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  max-width: 500px;
+}
+
+.pageInfo {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.pageIcon {
+  font-size: 16px;
+  min-width: 20px;
+  color: #FF6A2C;
+  margin-top: 2px;
+}
+
+.pageTitle {
+  color: #FFFFFF;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+  word-wrap: break-word;
+  text-align: left;
+  flex: 1;
+  min-width: 0;
+}
+
+.changePage {
+  background: none;
+  border: 1px solid rgba(255, 106, 44, 0.5);
+  border-radius: 5px;
+  padding: 6px 12px;
+  color: #FF6A2C;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.changePage:hover {
+  background: rgba(255, 106, 44, 0.1);
+  border-color: #FF6A2C;
+}
+
+.selectPageButton {
+  width: 100%;
+  max-width: 500px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+  border-radius: 7px;
+  padding: 12px;
+  color: #CBCBCA;
+  font-size: 14px;
+  font-weight: 400;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.selectPageButton:hover {
+  background: rgba(255, 106, 44, 0.1);
+  border-color: rgba(255, 106, 44, 0.3);
+  color: #FFFFFF;
+}
+
+.userEmail {
+  color: #CBCBCA;
+  font-size: 14px;
+  margin: 0 0 8px;
+  text-align: center;
+}
