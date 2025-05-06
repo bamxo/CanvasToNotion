@@ -2,7 +2,7 @@
 import { canvasApi } from '../services/canvas/api';
 
 // Function to sync data with Notion through our backend
-async function syncWithNotion(courses: any[], assignments: any[]) {
+async function syncWithNotion(courses: any[], assignments: any[], message: any) {
   try {
     console.log('Starting sync with Notion for', courses.length, 'courses and', assignments.length, 'assignments');
     
@@ -29,11 +29,16 @@ async function syncWithNotion(courses: any[], assignments: any[]) {
     }
     
     const payload = {
-      email: "benliu297@gmail.com",
-      pageId: "1d54b569-44da-804e-88d6-e0ac3b5bff75",
+      email: message.type === 'SYNC_TO_NOTION' ? message.data.email : null,
+      pageId: message.type === 'SYNC_TO_NOTION' ? message.data.pageId : null,
       courses: simplifiedCourses,
       assignments: simplifiedAssignments
     };
+    
+    // Validate payload before sending
+    if (!payload.email || !payload.pageId) {
+      console.warn('Missing email or pageId, but continuing with sync attempt');
+    }
     
     console.log('Sending sync payload:', payload);
     
@@ -74,8 +79,8 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   // This ensures we can use async/await with the message handler
   (async () => {
     try {
-      if (message.action === 'fetchAll') {
-        console.log('Fetching all Canvas data...');
+      if (message.type === 'SYNC_TO_NOTION') {
+        console.log('Received SYNC_TO_NOTION message:', message);
         // First fetch all necessary data
         const courses = await canvasApi.getRecentCourses();
         console.log('Fetched courses:', courses);
@@ -85,7 +90,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         
         // Then sync with Notion
         try {
-          const syncResult = await syncWithNotion(courses, assignments);
+          const syncResult = await syncWithNotion(courses, assignments, message);
           
           // Return all data including sync results
           sendResponse({ 
@@ -96,17 +101,57 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
               syncResult
             } 
           });
-        } catch (syncError) {
-          // If sync fails, we still return the fetched data
-          console.error('Sync error:', syncError);
+        } catch (error: any) {
+          console.error('Sync encountered an issue:', error);
+          // Only treat it as an error if the sync actually failed
+          const syncError = error instanceof Error ? error : new Error(String(error));
+          const isActualError = syncError.message.includes('failed') || 
+                              syncError.message.includes('error');
+          
           sendResponse({ 
-            success: true,  // Still consider this a successful data fetch
+            success: !isActualError,
             data: { courses, assignments },
-            syncError: syncError instanceof Error ? syncError.message : 'Sync failed'
+            syncWarning: isActualError ? undefined : syncError.message,
+            syncError: isActualError ? syncError.message : undefined
           });
         }
-      }
-      else {
+      } else if (message.action === 'fetchAll') {
+        console.log('Fetching all Canvas data...');
+        // First fetch all necessary data
+        const courses = await canvasApi.getRecentCourses();
+        console.log('Fetched courses:', courses);
+        
+        const assignments = await canvasApi.getAllAssignments(courses);
+        console.log('Fetched assignments:', assignments);
+        
+        // Then sync with Notion
+        try {
+          const syncResult = await syncWithNotion(courses, assignments, message);
+          
+          // Return all data including sync results
+          sendResponse({ 
+            success: true, 
+            data: { 
+              courses, 
+              assignments,
+              syncResult
+            } 
+          });
+        } catch (error: any) {
+          console.error('Sync encountered an issue:', error);
+          // Only treat it as an error if the sync actually failed
+          const syncError = error instanceof Error ? error : new Error(String(error));
+          const isActualError = syncError.message.includes('failed') || 
+                              syncError.message.includes('error');
+          
+          sendResponse({ 
+            success: !isActualError,
+            data: { courses, assignments },
+            syncWarning: isActualError ? undefined : syncError.message,
+            syncError: isActualError ? syncError.message : undefined
+          });
+        }
+      } else {
         sendResponse({ success: false, error: 'Unknown action' });
       }
     } catch (error) {

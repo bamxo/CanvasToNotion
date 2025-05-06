@@ -268,3 +268,10 @@
   border-color: rgba(255, 106, 44, 0.3);
   color: #FFFFFF;
 }
+
+.userEmail {
+  color: #CBCBCA;
+  font-size: 14px;
+  margin: 0 0 8px;
+  text-align: center;
+}

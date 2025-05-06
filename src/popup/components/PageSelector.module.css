@@ -145,4 +145,35 @@
 .plusIcon {
   width: 16px;
   height: 16px;
+}
+
+.loadingContainer,
+.errorContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  text-align: center;
+  padding: 20px;
+}
+
+.errorText {
+  color: #ff4d4d;
+  margin-bottom: 16px;
+}
+
+.retryButton {
+  background: linear-gradient(90deg, #FF6A2C 0%, #EF5223 100%);
+  border: none;
+  border-radius: 7px;
+  padding: 12px 24px;
+  color: white;
+  font-size: 14px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.retryButton:hover {
+  opacity: 0.9;
 } 

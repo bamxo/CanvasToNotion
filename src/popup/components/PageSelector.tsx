@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import axios from 'axios';
+import { getAuth } from 'firebase/auth';
 import styles from './PageSelector.module.css';
-import mockPages from '../data/mockPages.json';
 import AppBar from './AppBar';
 
 interface NotionPage {
@@ -14,6 +15,36 @@ interface PageSelectorProps {
 }
 
 const PageSelector: React.FC<PageSelectorProps> = ({ onPageSelect }) => {
+  const [pages, setPages] = useState<NotionPage[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchPages = async () => {
+      try {
+        const auth = getAuth();
+        const user = auth.currentUser;
+        
+        if (!user?.email) {
+          throw new Error('User email not found');
+        }
+
+        const response = await axios.get('http://localhost:3000/api/notion/pages', {
+          params: { email: user.email }
+        });
+
+        setPages(response.data.pages);
+      } catch (err) {
+        console.error('Error fetching pages:', err);
+        setError('Failed to load pages. Please try again later.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchPages();
+  }, []);
+
   const handleCreateNewPage = () => {
     // TODO: Implement create new page functionality
     console.log('Create new page clicked');
@@ -22,6 +53,38 @@ const PageSelector: React.FC<PageSelectorProps> = ({ onPageSelect }) => {
   const handlePageSelect = (page: NotionPage) => {
     onPageSelect(page);
   };
+
+  if (isLoading) {
+    return (
+      <div className={styles.container}>
+        <AppBar />
+        <div className={styles.content}>
+          <div className={styles.loadingContainer}>
+            Loading pages...
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className={styles.container}>
+        <AppBar />
+        <div className={styles.content}>
+          <div className={styles.errorContainer}>
+            <p className={styles.errorText}>{error}</p>
+            <button 
+              className={styles.retryButton}
+              onClick={() => window.location.reload()}
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.container}>
@@ -43,7 +106,7 @@ const PageSelector: React.FC<PageSelectorProps> = ({ onPageSelect }) => {
             <span className={styles.pageIcon}>+</span>
             <span className={styles.pageTitle}>Create New Page</span>
           </button>
-          {mockPages.pages.map((page: NotionPage) => (
+          {pages.map((page: NotionPage) => (
             <button
               key={page.id}
               className={styles.pageItem}
