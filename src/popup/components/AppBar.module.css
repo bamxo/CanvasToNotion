@@ -2,9 +2,10 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 16px;
-  background-color: #1E1E1E;
-  border-bottom: 1px solid #757575;
+  padding: 18px 16px;
+  background-color: rgba(30, 30, 30, 0.6);
+  backdrop-filter: blur(3px);
+  border-bottom: 1px solid rgba(117, 117, 117, 0.5);
   position: sticky;
   top: 0;
   z-index: 100;

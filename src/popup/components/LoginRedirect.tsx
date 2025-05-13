@@ -11,10 +11,6 @@ import styles from './LoginRedirect.module.css'
 import logo from '../../assets/c2n_logo dark.svg'
 import EmailLogin from './EmailLogin'
 
-interface LoginRedirectProps {
-  onGuestClick: () => void;
-}
-
 // Particle component
 const Particle = ({ delay }: { delay: number }) => {
   const style = {
@@ -26,7 +22,7 @@ const Particle = ({ delay }: { delay: number }) => {
   return <div className={styles.particle} style={style} />;
 };
 
-const LoginRedirect = ({ onGuestClick }: LoginRedirectProps) => {
+const LoginRedirect = () => {
   // State management for loading states, errors, and Canvas page detection
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -40,9 +36,7 @@ const LoginRedirect = ({ onGuestClick }: LoginRedirectProps) => {
       setIsCanvasPage(currentUrl.includes('canvas'));
     });
   }, []);
-  const handleEmailLoginSuccess = () => {
-    onGuestClick(); // This will redirect to dashboard since it updates the state
-  };
+
   /**
    * Handles the login process by:
    * 1. Opening the webapp login page in a new tab
@@ -66,26 +60,16 @@ const LoginRedirect = ({ onGuestClick }: LoginRedirectProps) => {
     }
   }
 
-  const handleGuestClick = () => {
-    chrome.storage.local.set({ isGuestMode: true }, () => {
-      if (chrome.runtime.lastError) {
-        console.error('Error setting guest mode:', chrome.runtime.lastError);
-      } else {
-        console.log('Guest mode enabled');
-        onGuestClick();
-      }
-    });
-  };
-
   // Generate array of particles
   const particles = Array.from({ length: 20 }, (_, i) => (
     <Particle key={i} delay={i * 0.3} />
   ));
+
   if (showEmailLogin) {
     return (
       <EmailLogin 
         onBack={() => setShowEmailLogin(false)}
-        onLoginSuccess={handleEmailLoginSuccess}
+        onLoginSuccess={() => {}}
       />
     );
   }
@@ -126,11 +110,6 @@ const LoginRedirect = ({ onGuestClick }: LoginRedirectProps) => {
       >
         Sign In with Email
       </button>
-
-      {/* Guest access option */}
-      <a href="#" onClick={handleGuestClick} className={styles.guestLink}>
-        Continue as a Guest
-      </a>
 
       {/* Error message display */}
       {error && (

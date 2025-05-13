@@ -11,6 +11,8 @@ import { canvasDataApi } from '../../services/chrome-communication'
 import { getAuth, onAuthStateChanged } from 'firebase/auth'
 import AppBar from './AppBar'
 import PageSelector from './PageSelector'
+import { FaCalendarAlt, FaClipboardList, FaQuestionCircle, FaComments, FaExclamationTriangle, FaClock, FaBook } from 'react-icons/fa'
+import mockUnsyncedItems from '../data/mockUnsyncedItems.json'
 
 interface NotionPage {
   id: string;
@@ -25,6 +27,27 @@ interface SyncData {
   assignments: any[];
 }
 
+interface UnsyncedItem {
+  id: string;
+  type: string;
+  title: string;
+  course: string;
+  due_date: string;
+  status: string;
+  points: number;
+}
+
+// Particle component
+const Particle = ({ delay }: { delay: number }) => {
+  const style = {
+    left: `${Math.random() * 100}%`,
+    animation: `${styles.floatParticle} 6s ease-in infinite`,
+    animationDelay: `${delay}s`
+  };
+
+  return <div className={styles.particle} style={style} />;
+};
+
 const Dashboard = () => {
   const [isLoading, setIsLoading] = useState(false)
   const [lastSync, setLastSync] = useState<string | null>(null)
@@ -34,6 +57,7 @@ const Dashboard = () => {
   const [showPageSelector, setShowPageSelector] = useState(false)
   const [selectedPage, setSelectedPage] = useState<NotionPage | null>(null)
   const [userEmail, setUserEmail] = useState<string | null>(null)
+  const [unsyncedItems, setUnsyncedItems] = useState<UnsyncedItem[]>(mockUnsyncedItems.unsyncedItems)
 
   useEffect(() => {
     const auth = getAuth();
@@ -116,6 +140,9 @@ const Dashboard = () => {
       
       setSyncStatus('success')
       setLastSync(new Date().toLocaleString())
+      
+      // Clear unsynced items after successful sync (in real implementation, this would be updated based on actual sync results)
+      setUnsyncedItems([])
     } catch (error) {
       setSyncStatus('error')
       console.error('Sync failed:', error)
@@ -124,6 +151,36 @@ const Dashboard = () => {
     }
   }
 
+  const formatDueDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = date.getTime() - now.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 0) {
+      return `${Math.abs(diffDays)} days overdue`;
+    } else if (diffDays === 0) {
+      return 'Due today';
+    } else if (diffDays === 1) {
+      return 'Due tomorrow';
+    } else {
+      return `Due in ${diffDays} days`;
+    }
+  }
+  
+  const getItemIcon = (type: string) => {
+    switch (type) {
+      case 'assignment':
+        return <FaClipboardList className={styles.itemIcon} />;
+      case 'quiz':
+        return <FaQuestionCircle className={styles.itemIcon} />;
+      case 'discussion':
+        return <FaComments className={styles.itemIcon} />;
+      default:
+        return <FaCalendarAlt className={styles.itemIcon} />;
+    }
+  };
+
   const handlePageSelect = (page: NotionPage) => {
     console.log('Page selected:', page);
     setSelectedPage(page)
@@ -131,6 +188,11 @@ const Dashboard = () => {
     // Store selected page in chrome storage
     chrome.storage.local.set({ selectedNotionPage: page });
   }
+
+  // Generate array of particles
+  const particles = Array.from({ length: 20 }, (_, i) => (
+    <Particle key={i} delay={i * 0.3} />
+  ));
 
   if (showPageSelector) {
     return <PageSelector onPageSelect={handlePageSelect} />
@@ -148,9 +210,16 @@ const Dashboard = () => {
   return (
     <div className={styles.container}>
       <AppBar />
+      {particles}
 
       <div className={styles.content}>
         <div className={styles.pageSelectionContainer}>
+          <div className={styles.pageSelectionHeader}>
+            <h2 className={styles.pageSelectionTitle}>
+              <FaBook className={styles.pageIcon} />
+              Notion Page
+            </h2>
+          </div>
           {selectedPage ? (
             <div className={styles.selectedPage}>
               <div className={styles.pageInfo}>
@@ -173,6 +242,64 @@ const Dashboard = () => {
             </button>
           )}
         </div>
+
+        {/* Unsynced Items Section */}
+        {selectedPage && (
+          <div className={styles.unsyncedContainer}>
+            <div className={styles.unsyncedHeader}>
+              <h2 className={styles.unsyncedTitle}>
+                {unsyncedItems.length > 0 ? (
+                  <FaExclamationTriangle className={`${styles.unsyncedIcon} ${styles.warningIcon}`} />
+                ) : (
+                  <FaCalendarAlt className={`${styles.unsyncedIcon} ${styles.successIcon}`} />
+                )}
+                {unsyncedItems.length > 0 ? 'Items to Sync' : 'Assignments Up To Date'}
+              </h2>
+              <div className={styles.unsyncedHeaderActions}>
+                {unsyncedItems.length > 0 ? (
+                  <>
+                    <span className={styles.unsyncedCount}>{unsyncedItems.length}</span>
+                    <button 
+                      onClick={() => setUnsyncedItems([])} 
+                      className={styles.clearButton}
+                      title="Clear all items (testing only)"
+                    >
+                      Clear
+                    </button>
+                  </>
+                ) : null}
+              </div>
+            </div>
+            
+            {unsyncedItems.length > 0 ? (
+              <div className={styles.unsyncedItemsList}>
+                {unsyncedItems.map((item) => (
+                  <div key={item.id} className={`${styles.unsyncedItem} ${item.status === 'overdue' ? styles.overdueItem : ''}`}>
+                    <div className={styles.unsyncedItemHeader}>
+                      {getItemIcon(item.type)}
+                      <div className={styles.unsyncedItemInfo}>
+                        <h3 className={styles.unsyncedItemTitle}>{item.title}</h3>
+                        <p className={styles.unsyncedItemCourse}>{item.course}</p>
+                      </div>
+                    </div>
+                    <div className={styles.unsyncedItemFooter}>
+                      <span className={`${styles.unsyncedItemDue} ${item.status === 'overdue' ? styles.overdueDue : ''}`}>
+                        <FaClock className={styles.dueIcon} />
+                        {formatDueDate(item.due_date)}
+                      </span>
+                      <span className={styles.unsyncedItemPoints}>{item.points} pts</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className={styles.emptyStateContainer}>
+                <FaCalendarAlt className={styles.emptyStateIcon} />
+                <p className={styles.emptyStateText}>Everything is up to date! No items to sync.</p>
+              </div>
+            )}
+          </div>
+        )}
 
         <div className={styles.statusContainer}>
           {lastSync && (
@@ -197,7 +324,7 @@ const Dashboard = () => {
           disabled={buttonDisabled}
           className={styles.syncButton}
         >
-          {isLoading ? 'Loading...' : 'Get All Assignments'}
+          {isLoading ? 'Loading...' : 'Sync All Assignments'}
         </button>
 
         {courses.length > 0 && (
