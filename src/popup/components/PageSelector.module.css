@@ -170,6 +170,12 @@
   min-width: 20px;
 }
 
+.defaultPageIcon {
+  color: #FF6A2C;
+  font-size: 16px;
+  min-width: 20px;
+}
+
 .pageTitle {
   flex: 1;
   overflow: hidden;

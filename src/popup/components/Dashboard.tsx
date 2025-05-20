@@ -11,13 +11,14 @@ import { canvasDataApi } from '../../services/chrome-communication'
 import { getAuth, onAuthStateChanged } from 'firebase/auth'
 import AppBar from './AppBar'
 import PageSelector from './PageSelector'
-import { FaCalendarAlt, FaClipboardList, FaQuestionCircle, FaComments, FaExclamationTriangle, FaClock, FaBook } from 'react-icons/fa'
+import { FaCalendarAlt, FaClipboardList, FaQuestionCircle, FaComments, FaExclamationTriangle, FaClock, FaBook, FaFile } from 'react-icons/fa'
 import mockUnsyncedItems from '../data/mockUnsyncedItems.json'
 
 interface NotionPage {
   id: string;
   title: string;
   icon?: string;
+  type?: string;
 }
 
 interface SyncData {
@@ -223,7 +224,11 @@ const Dashboard = () => {
           {selectedPage ? (
             <div className={styles.selectedPage}>
               <div className={styles.pageInfo}>
-                {selectedPage.icon && <span className={styles.pageIcon}>{selectedPage.icon}</span>}
+                {selectedPage.icon ? (
+                  <span className={styles.pageIcon}>{selectedPage.icon}</span>
+                ) : (
+                  <FaFile className={styles.pageIcon} />
+                )}
                 <span className={styles.pageTitle}>{selectedPage.title}</span>
               </div>
               <button 

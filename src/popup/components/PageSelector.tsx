@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import axios from 'axios';
 import { getAuth } from 'firebase/auth';
+import { FaFile } from 'react-icons/fa';
 import styles from './PageSelector.module.css';
 import AppBar from './AppBar';
 
@@ -8,6 +9,7 @@ interface NotionPage {
   id: string;
   title: string;
   icon?: string;
+  type?: string;
 }
 
 interface PageSelectorProps {
@@ -171,7 +173,11 @@ const PageSelector: React.FC<PageSelectorProps> = ({ onPageSelect }) => {
               className={styles.pageItem}
               onClick={() => handlePageSelect(page)}
             >
-              {page.icon && <span className={styles.pageIcon}>{page.icon}</span>}
+              {page.icon ? (
+                <span className={styles.pageIcon}>{page.icon}</span>
+              ) : (
+                <FaFile className={styles.defaultPageIcon} />
+              )}
               <span className={styles.pageTitle}>{page.title}</span>
             </button>
           ))}
