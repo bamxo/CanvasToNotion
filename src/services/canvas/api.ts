@@ -92,30 +92,34 @@ interface Course {
      */
     async getAllAssignments(courses: Course[]): Promise<Assignment[]> {
       const allAssignments: Assignment[] = [];
-      
+
       for (const course of courses) {
-        try {
-          const response = await fetch(`${this.baseUrl}/courses/${course.id}/assignments`);
-          if (!response.ok) continue; // Skip failed requests
-          
-          const courseAssignments = await response.json();
-          
-          // Add course information to each assignment
-          allAssignments.push(
-            ...courseAssignments.map((assignment: any) => ({
-              ...assignment,
-              courseName: course.name,
-              courseId: course.id,
-            }))
-          );
-        } catch (err) {
-          console.error(`Failed to fetch assignments for course ${course.id}:`, err);
-          // Continue with other courses even if one fails
+        let url = `${this.baseUrl}/courses/${course.id}/assignments?per_page=100`;
+        while (url) {
+          try {
+            const response = await fetch(url);
+            if (!response.ok) break;
+
+            const courseAssignments = await response.json();
+            allAssignments.push(
+              ...courseAssignments.map((assignment: any) => ({
+                ...assignment,
+                courseName: course.name,
+                courseId: course.id,
+              }))
+            );
+
+            const linkHeader = response.headers.get('Link');
+            url = linkHeader ? this.parseNextLink(linkHeader) || '' : '';
+          } catch (err) {
+            console.error(`Failed to fetch assignments for course ${course.id}:`, err);
+            break;
+          }
         }
       }
-      
       return allAssignments;
     }
+
   }
   
   // Export a singleton instance
