@@ -34,7 +34,7 @@ const AppBar = () => {
     });
 
     // Listen for external messages from the web app
-    const handleExternalMessage = (message: any, sender: any, sendResponse: any) => {
+    const handleExternalMessage = (message: any, _: any, sendResponse: any) => {
       console.log('Received external message:', message);
       if (message.type === 'LOGOUT') {
         console.log('Received logout message from web app');
