@@ -1,6 +1,6 @@
 // db.js - Firebase User Data Utilities
 import { initializeApp } from 'firebase/app';
-import { getDatabase, ref, get, query, orderByChild, equalTo } from 'firebase/database';
+import { getDatabase, ref, get, query, orderByChild, equalTo, update } from 'firebase/database';
 
 // Firebase configuration - replace with your actual config
 const firebaseConfig = {
@@ -22,7 +22,7 @@ const db = getDatabase(app);
  * @param {string} email - The email to search for
  * @returns {Promise<Object>} Object containing userId, accessToken, and userData
  */
-export const getUserDataByEmail = async (email) => {
+export const getUserDataByEmail = async (email: string) => {
   try {
     // Create a reference to the users node
     const usersRef = ref(db, 'users');
@@ -71,7 +71,7 @@ export const getUserDataByEmail = async (email) => {
  * @param {string} userId - The user ID
  * @returns {Promise<string>} The access token
  */
-export const getAccessTokenForUser = async (userId) => {
+export const getAccessTokenForUser = async (userId: string) => {
   try {
     // Create a reference to the specific user
     const userRef = ref(db, `users/${userId}`);
@@ -102,7 +102,7 @@ export const getAccessTokenForUser = async (userId) => {
  * @param {string} newAccessToken - The new access token to set
  * @returns {Promise<void>}
  */
-export const updateAccessToken = async (userId, newAccessToken) => {
+export const updateAccessToken = async (userId: string, newAccessToken: string) => {
   try {
     const userRef = ref(db, `users/${userId}`);
     await update(userRef, {
