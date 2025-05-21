@@ -28,7 +28,12 @@ export default defineConfig({
         background: path.resolve(__dirname, 'src/background/index.ts')
       },
       output: {
-        entryFileNames: '[name].js'
+        entryFileNames: '[name].js',
+        format: 'es',
+        manualChunks: undefined,
+        inlineDynamicImports: false,
+        preserveModules: false,
+        preserveEntrySignatures: false
       }
     }
   },
