@@ -82,8 +82,10 @@ const Dashboard = () => {
     });
 
     // Check if we have a stored page selection
-    chrome.storage.local.get(['selectedNotionPage'], (result) => {
-      if (result.selectedNotionPage) {
+    chrome.storage.local.get(['selectedNotionPage', 'showPageSelector'], (result) => {
+      if (result.showPageSelector) {
+        setShowPageSelector(true);
+      } else if (result.selectedNotionPage) {
         setSelectedPage(result.selectedNotionPage);
       }
     });
@@ -187,7 +189,14 @@ const Dashboard = () => {
     setSelectedPage(page)
     setShowPageSelector(false)
     // Store selected page in chrome storage
-    chrome.storage.local.set({ selectedNotionPage: page });
+    chrome.storage.local.set({ selectedNotionPage: page, showPageSelector: false });
+  }
+
+  const handleChangePageClick = () => {
+    setShowPageSelector(true);
+    setSelectedPage(null);
+    // Store the state in chrome.storage.local
+    chrome.storage.local.set({ selectedNotionPage: null, showPageSelector: true });
   }
 
   // Generate array of particles
@@ -232,7 +241,7 @@ const Dashboard = () => {
                 <span className={styles.pageTitle}>{selectedPage.title}</span>
               </div>
               <button 
-                onClick={() => setShowPageSelector(true)}
+                onClick={handleChangePageClick}
                 className={styles.changePage}
               >
                 Change Page
