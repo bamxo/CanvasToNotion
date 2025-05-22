@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { FaLink, FaCog } from 'react-icons/fa';
 import styles from './PageSelector.module.css';
 
@@ -7,13 +7,27 @@ interface NotionDisconnectedProps {
 }
 
 const NotionDisconnected: React.FC<NotionDisconnectedProps> = ({ onRetry }) => {
+  const [isVisible, setIsVisible] = useState(false);
+  
+  useEffect(() => {
+    // Trigger animation after component mounts
+    const timer = setTimeout(() => setIsVisible(true), 100);
+    return () => clearTimeout(timer);
+  }, []);
+
   const handleOpenSettings = () => {
     chrome.tabs.create({ url: 'http://localhost:5173/settings' });
     window.close();
   };
 
+  const animationStyle = {
+    opacity: isVisible ? 1 : 0,
+    transform: isVisible ? 'scale(1)' : 'scale(0.95)',
+    transition: 'opacity 0.5s ease-in-out, transform 0.5s ease-out'
+  };
+
   return (
-    <div className={styles.notionDisconnectedContainer}>
+    <div className={styles.notionDisconnectedContainer} style={animationStyle}>
       <div className={styles.iconWrapper}>
         <FaLink className={styles.disconnectedIcon} />
       </div>

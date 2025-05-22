@@ -1,10 +1,10 @@
 import React, { useEffect, useState, useRef } from 'react';
 import axios from 'axios';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
-import { FaFile } from 'react-icons/fa';
 import styles from './PageSelector.module.css';
 import AppBar from './AppBar';
 import NotionDisconnected from './NotionDisconnected';
+import DefaultPageView from './DefaultPageView';
 
 interface NotionPage {
   id: string;
@@ -362,37 +362,12 @@ const PageSelector: React.FC<PageSelectorProps> = ({ onPageSelect }) => {
       {particles}
       
       <div className={styles.content}>
-        <div className={styles.headerContainer}>
-          <h2 className={styles.title}>Select a Page</h2>
-          <p className={styles.subtext}>
-            Choose a Notion page to export to. You can switch pages again at any time.
-          </p>
-          {isLoading && <span className={styles.refreshIndicator}>Refreshing...</span>}
-        </div>
-
-        <div className={styles.pageList}>
-          <button
-            className={`${styles.pageItem} ${styles.createPageItem}`}
-            onClick={handleCreateNewPage}
-          >
-            <span className={styles.pageIcon}>+</span>
-            <span className={styles.pageTitle}>Create New Page</span>
-          </button>
-          {pages.map((page: NotionPage) => (
-            <button
-              key={page.id}
-              className={styles.pageItem}
-              onClick={() => handlePageSelect(page)}
-            >
-              {page.icon ? (
-                <span className={styles.pageIcon}>{page.icon}</span>
-              ) : (
-                <FaFile className={styles.defaultPageIcon} />
-              )}
-              <span className={styles.pageTitle}>{page.title}</span>
-            </button>
-          ))}
-        </div>
+        <DefaultPageView 
+          pages={pages}
+          isLoading={isLoading}
+          onPageSelect={handlePageSelect}
+          onCreateNewPage={handleCreateNewPage}
+        />
       </div>
     </div>
   );
