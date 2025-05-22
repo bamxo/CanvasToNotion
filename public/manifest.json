@@ -26,6 +26,14 @@
     "identity",
     "offscreen"
   ],
+  "externally_connectable": {
+    "matches": [
+      "http://localhost:5173/*",
+      "https://*.firebaseapp.com/*",
+      "https://canvas-to-notion.web.app/*"
+    ],
+    "accepts_tls_channel_id": false
+  },
   "host_permissions": [
     "http://*/*",
     "https://*/*",
@@ -42,11 +50,12 @@
     "scopes": ["openid", "email", "profile"
   ]
   },
-  "key": "hdeahpapjnbonaeaelphhpcgocogblld",
+  "key": "pnambdilelidpleodeielckfnmmjfhji",
   "content_security_policy": {
     "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
   },
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "type": "module"
   }
 } 

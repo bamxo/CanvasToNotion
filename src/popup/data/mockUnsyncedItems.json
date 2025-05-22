@@ -1,0 +1,49 @@
+{
+  "unsyncedItems": [
+    {
+      "id": "a1",
+      "type": "assignment",
+      "title": "Web Development Final Project",
+      "course": "CSE 115A",
+      "due_date": "2025-06-15T23:59:00Z",
+      "status": "upcoming",
+      "points": 100
+    },
+    {
+      "id": "q1",
+      "type": "quiz",
+      "title": "React Fundamentals Quiz",
+      "course": "CSE 115A",
+      "due_date": "2025-06-10T16:00:00Z",
+      "status": "upcoming",
+      "points": 20
+    },
+    {
+      "id": "a2",
+      "type": "assignment",
+      "title": "Database Design Document",
+      "course": "CSE 180",
+      "due_date": "2023-06-08T23:59:00Z",
+      "status": "upcoming",
+      "points": 50
+    },
+    {
+      "id": "d1",
+      "type": "discussion",
+      "title": "Cloud Computing Ethics",
+      "course": "CSE 150",
+      "due_date": "2025-06-05T23:59:00Z",
+      "status": "overdue",
+      "points": 15
+    },
+    {
+      "id": "a3",
+      "type": "assignment",
+      "title": "Algorithm Analysis Report",
+      "course": "CSE 102",
+      "due_date": "2025-06-20T23:59:00Z",
+      "status": "upcoming",
+      "points": 75
+    }
+  ]
+} 

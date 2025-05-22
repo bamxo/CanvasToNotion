@@ -6,7 +6,6 @@ import PageSelector from './popup/components/PageSelector'
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [isGuestMode, setIsGuestMode] = useState(false)
   const [checkingAuth, setCheckingAuth] = useState(true)
   const [isCanvasPage, setIsCanvasPage] = useState(false)
   const [selectedPage, setSelectedPage] = useState(false)
@@ -22,10 +21,9 @@ function App() {
     });
 
     // Check initial state
-    chrome.storage.local.get(['canvasToken', 'isGuestMode', 'selectedPage'], (result) => {
+    chrome.storage.local.get(['canvasToken', 'selectedPage'], (result) => {
       console.log('Initial state:', result);
       setIsAuthenticated(!!result.canvasToken);
-      setIsGuestMode(!!result.isGuestMode);
       setSelectedPage(!!result.selectedPage);
       setCheckingAuth(false);
     });
@@ -33,9 +31,6 @@ function App() {
     // Listen for storage changes
     const handleStorageChange = (changes: { [key: string]: chrome.storage.StorageChange }) => {
       console.log('Storage changes:', changes);
-      if (changes.isGuestMode) {
-        setIsGuestMode(!!changes.isGuestMode.newValue);
-      }
       if (changes.canvasToken) {
         setIsAuthenticated(!!changes.canvasToken.newValue);
       }
@@ -53,7 +48,6 @@ function App() {
       } else if (message.type === 'LOGOUT') {
         console.log('Logout message received, resetting state...');
         setIsAuthenticated(false);
-        setIsGuestMode(false);
         setSelectedPage(false);
       }
     };
@@ -84,7 +78,7 @@ function App() {
   const containerStyle = {
     height: isAuthenticated ? 'auto' : !isCanvasPage ? '420px' : '388px',
     minHeight: isAuthenticated ? '388px' : undefined,
-    overflow: isAuthenticated || isGuestMode ? 'auto' : 'hidden',
+    overflow: isAuthenticated ? 'auto' : 'hidden',
     transition: 'height 0.3s ease'
   };
 
@@ -94,8 +88,8 @@ function App() {
   return (
     <div className={containerClasses} style={containerStyle}>
       <div className="card">
-        {!isAuthenticated && !isGuestMode ? (
-          <LoginRedirect onGuestClick={() => setIsGuestMode(true)} />
+        {!isAuthenticated ? (
+          <LoginRedirect />
         ) : selectedPage ? (
           <Dashboard />
         ) : (

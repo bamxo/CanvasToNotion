@@ -27,8 +27,9 @@ body {
   display: flex;
   place-items: center;
   min-width: 320px;
-  min-height: 100vh;
+  height: auto;
   background: linear-gradient(229deg, #1F1F1F 37%, #333333 100%);
+  overflow-y: visible;
 }
 
 h1 {
@@ -76,4 +77,10 @@ button:focus-visible {
   button {
     background-color: #f9f9f9;
   }
+}
+
+#root {
+  width: 100%;
+  height: auto;
+  min-height: 100%;
 }

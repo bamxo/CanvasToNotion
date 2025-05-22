@@ -1,5 +1,20 @@
 // src/background/index.ts
+console.log('Background script initializing...');
+
 import { canvasApi } from '../services/canvas/api';
+import './auth';  // Import auth module to initialize token handling
+
+console.log('Background script initialized, auth module imported');
+
+// Keep service worker alive
+chrome.runtime.onStartup.addListener(() => {
+  console.log("Extension started up, service worker activated");
+});
+
+// Periodic ping to keep service worker alive
+setInterval(() => {
+  console.log("Service worker heartbeat");
+}, 25000); // Every 25 seconds
 
 // Function to sync data with Notion through our backend
 async function syncWithNotion(courses: any[], assignments: any[], message: any) {
