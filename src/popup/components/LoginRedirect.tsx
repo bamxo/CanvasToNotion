@@ -9,7 +9,7 @@
 import { useState, useEffect } from 'react'
 import styles from './LoginRedirect.module.css'
 import logo from '../../assets/c2n_logo dark.svg'
-import EmailLogin from './EmailLogin'
+import { signInWithEmail } from '../../services/auth.service';
 
 // Particle component
 const Particle = ({ delay }: { delay: number }) => {
@@ -27,7 +27,11 @@ const LoginRedirect = () => {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isCanvasPage, setIsCanvasPage] = useState(false)
-  const [showEmailLogin, setShowEmailLogin] = useState(false)
+  
+  // Email login state (integrated from EmailLogin component)
+  const [showEmailForm, setShowEmailForm] = useState(false)
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
 
   useEffect(() => {
     // Check if the current tab is a Canvas page by examining the URL
@@ -60,20 +64,89 @@ const LoginRedirect = () => {
     }
   }
 
+  /**
+   * Handles email login submission
+   * This functionality is ported from the EmailLogin component
+   */
+  const handleEmailLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setIsLoading(true);
+
+    try {
+      const user = await signInWithEmail(email, password);
+      if (user) {
+        chrome.storage.local.set({ canvasToken: user.uid });
+        chrome.runtime.sendMessage({ type: 'LOGIN_SUCCESS' });
+        // Successfully logged in
+        setShowEmailForm(false);
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to sign in');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Generate array of particles
   const particles = Array.from({ length: 20 }, (_, i) => (
     <Particle key={i} delay={i * 0.3} />
   ));
 
-  if (showEmailLogin) {
+  // Email login form view
+  if (showEmailForm) {
     return (
-      <EmailLogin 
-        onBack={() => setShowEmailLogin(false)}
-        onLoginSuccess={() => {}}
-      />
+      <>
+        <button 
+          type="button"
+          onClick={() => setShowEmailForm(false)} 
+          className={styles.backButton}
+        >
+          ← Return
+        </button>
+
+        <div className={styles.container}>
+          {particles}
+          
+          <div className={styles.headerContainer}>
+            <img src={logo} alt="Canvas to Notion Logo" className={styles.logo} />
+          </div>
+          
+          <form onSubmit={handleEmailLogin} className={styles.form}>
+            <input
+              type="email"
+              placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              className={styles.input}
+            />
+            
+            <input
+              type="password"
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              className={styles.input}
+            />
+            
+            {error && <div className={styles.error}>{error}</div>}
+            
+            <button 
+              type="submit" 
+              disabled={isLoading}
+              className={styles.submitButton}
+            >
+              {isLoading ? 'Signing in...' : 'Sign In'}
+            </button>
+          </form>
+        </div>
+      </>
     );
   }
 
+  // Main login view
   return (
     <div className={`${styles.container} ${isCanvasPage ? styles.canvasContainer : styles.nonCanvasContainer}`}>
       {particles}
@@ -103,12 +176,6 @@ const LoginRedirect = () => {
         className={styles.signInButton}
       >
         {isLoading ? 'Redirecting...' : 'Sign In'}
-      </button>
-      <button 
-        onClick={() => setShowEmailLogin(true)}
-        className={styles.emailSignInButton}
-      >
-        Sign In with Email
       </button>
 
       {/* Error message display */}

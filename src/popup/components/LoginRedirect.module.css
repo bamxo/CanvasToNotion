@@ -8,7 +8,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 20px;
+  gap: 24px;
   position: relative;
   overflow: hidden;
   background: #1a1a1a;
@@ -102,7 +102,7 @@
 .logo {
   width: 180px;
   height: auto;
-  margin-bottom: 0;
+  margin-bottom: 5px;
 }
 
 .subtext {
@@ -127,6 +127,7 @@
   color: #FFFFFF;
   transition: opacity 0.2s;
   width: 280px;
+  margin-top: 5px;
 }
 
 .signInButton:hover {
@@ -136,6 +137,95 @@
 .signInButton:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+/* Email login button (hidden by default) */
+.emailSignInButton {
+  display: none;
+  position: relative;
+  z-index: 1;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 7px;
+  padding: 12px 40px;
+  cursor: pointer;
+  font-family: 'Poppins', sans-serif;
+  font-size: 15px;
+  font-weight: 500;
+  color: #FFFFFF;
+  transition: opacity 0.2s;
+  width: 280px;
+}
+
+/* Styles ported from EmailLogin.module.css */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-top: 20px;
+  position: relative;
+  z-index: 1;
+  width: 280px;
+}
+
+.input {
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 7px;
+  font-size: 14px;
+  color: #FFFFFF;
+  font-family: 'Poppins', sans-serif;
+  transition: border-color 0.2s;
+}
+
+.input:focus {
+  outline: none;
+  border-color: #FF6A2C;
+}
+
+.input::placeholder {
+  color: #CBCBCA;
+}
+
+.submitButton {
+  background: linear-gradient(90deg, #FF6A2C 0%, #EF5223 100%);
+  border: none;
+  border-radius: 7px;
+  padding: 12px 40px;
+  cursor: pointer;
+  font-family: 'Poppins', sans-serif;
+  font-size: 15px;
+  font-weight: 500;
+  color: #FFFFFF;
+  transition: opacity 0.2s;
+}
+
+.submitButton:hover {
+  opacity: 0.9;
+}
+
+.submitButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.backButton {
+  background: none;
+  border: none;
+  color: #2196f3;
+  cursor: pointer;
+  padding: 30px;
+  font-family: 'Poppins', sans-serif;
+  font-size: 14px;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 2;
+}
+
+.backButton:hover {
+  color: #42a5f5;
 }
 
 .guestLink {
@@ -160,4 +250,11 @@
   font-size: 18px;
   text-align: center;
   margin: 0;
+}
+
+.error {
+  color: #ff4d4d;
+  font-size: 14px;
+  margin-top: 5px;
+  font-family: 'Poppins', sans-serif;
 } 
