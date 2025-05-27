@@ -17,6 +17,7 @@ export default defineConfig({
       '@popup': path.resolve(__dirname, './src/popup'),
       '@background': path.resolve(__dirname, './src/background'),
       '@content': path.resolve(__dirname, './src/content'),
+      '@services': path.resolve(__dirname, './src/services'),
     },
   },
   build: {
