@@ -7,7 +7,6 @@
 
 import { useState, useEffect } from 'react'
 import styles from './Dashboard.module.css'
-import { canvasDataApi } from '../../services/chrome-communication'
 import { getAuth, onAuthStateChanged } from 'firebase/auth'
 import AppBar from './AppBar'
 import PageSelector from './PageSelector'
@@ -26,8 +25,6 @@ interface NotionPage {
 interface SyncData {
   email: string;
   pageId: string;
-  courses: any[];
-  assignments: any[];
 }
 
 interface UnsyncedItem {
@@ -120,15 +117,11 @@ const Dashboard = () => {
       setIsLoading(true)
       setSyncStatus(null)
       
-      // Fetch courses and assignments using the canvasDataApi
-      const { courses: fetchedCourses, assignments: fetchedAssignments } = await canvasDataApi.fetchAll()
       
       // Prepare sync data
       const syncData: SyncData = {
         email: userEmail,
         pageId: selectedPage.id,
-        courses: fetchedCourses,
-        assignments: fetchedAssignments
       };
 
       // Send the sync data to background script
