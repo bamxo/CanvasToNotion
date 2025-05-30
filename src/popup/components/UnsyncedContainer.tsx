@@ -4,7 +4,8 @@ import {
   FaQuestionCircle, 
   FaComments, 
   FaExclamationTriangle, 
-  FaClock 
+  FaClock,
+  FaSync
 } from 'react-icons/fa';
 import styles from './Dashboard.module.css';
 
@@ -21,14 +22,20 @@ interface UnsyncedItem {
 interface UnsyncedContainerProps {
   unsyncedItems: UnsyncedItem[];
   onClearItems: () => void;
+  isLoading?: boolean;
 }
 
 const UnsyncedContainer = ({ 
   unsyncedItems, 
-  onClearItems 
+  onClearItems,
+  isLoading = false
 }: UnsyncedContainerProps) => {
 
   const formatDueDate = (dateString: string) => {
+    if (!dateString) {
+      return 'No Due Date';
+    }
+    
     const date = new Date(dateString);
     const now = new Date();
     const diffTime = date.getTime() - now.getTime();
@@ -62,15 +69,18 @@ const UnsyncedContainer = ({
     <div className={styles.unsyncedContainer}>
       <div className={styles.unsyncedHeader}>
         <h2 className={styles.unsyncedTitle}>
-          {unsyncedItems.length > 0 ? (
+          {isLoading ? (
+            <FaCalendarAlt className={styles.unsyncedIcon} />
+          ) : unsyncedItems.length > 0 ? (
             <FaExclamationTriangle className={`${styles.unsyncedIcon} ${styles.warningIcon}`} />
           ) : (
             <FaCalendarAlt className={`${styles.unsyncedIcon} ${styles.successIcon}`} />
           )}
-          {unsyncedItems.length > 0 ? 'Items to Sync' : 'Assignments Up To Date'}
+          {isLoading ? 'Checking Canvas Items...' : 
+            unsyncedItems.length > 0 ? 'Items to Sync' : 'Assignments Up To Date'}
         </h2>
         <div className={styles.unsyncedHeaderActions}>
-          {unsyncedItems.length > 0 ? (
+          {unsyncedItems.length > 0 && !isLoading ? (
             <>
               <span className={styles.unsyncedCount}>{unsyncedItems.length}</span>
               <button 
@@ -85,10 +95,22 @@ const UnsyncedContainer = ({
         </div>
       </div>
       
-      {unsyncedItems.length > 0 ? (
+      {isLoading ? (
+        <div className={styles.emptyStateContainer}>
+          <FaSync className={`${styles.emptyStateIcon} ${styles.rotating}`} />
+          <p className={styles.emptyStateText}>Comparing Canvas with Notion...</p>
+        </div>
+      ) : unsyncedItems.length > 0 ? (
         <div className={styles.unsyncedItemsList}>
           {unsyncedItems.map((item) => (
-            <div key={item.id} className={`${styles.unsyncedItem} ${item.status === 'overdue' ? styles.overdueItem : ''}`}>
+            <div 
+              key={item.id} 
+              className={`
+                ${styles.unsyncedItem} 
+                ${item.status === 'overdue' ? styles.overdueItem : ''} 
+                ${item.status === 'no-due-date' ? styles.noDueDateItem : ''}
+              `}
+            >
               <div className={styles.unsyncedItemHeader}>
                 {getItemIcon(item.type)}
                 <div className={styles.unsyncedItemInfo}>
@@ -97,7 +119,7 @@ const UnsyncedContainer = ({
                 </div>
               </div>
               <div className={styles.unsyncedItemFooter}>
-                <span className={`${styles.unsyncedItemDue} ${item.status === 'overdue' ? styles.overdueDue : ''}`}>
+                <span className={`${styles.unsyncedItemDue} ${item.status === 'overdue' ? styles.overdueDue : ''} ${item.status === 'no-due-date' ? styles.noDueDateDue : ''}`}>
                   <FaClock className={styles.dueIcon} />
                   {formatDueDate(item.due_date)}
                 </span>

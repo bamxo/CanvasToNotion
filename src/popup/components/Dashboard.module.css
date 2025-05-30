@@ -81,6 +81,24 @@
   }
 }
 
+/* Add rotating animation for loading icons */
+@keyframes rotate {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.rotating {
+  animation: rotate 2s linear infinite;
+}
+
+.loadingIcon {
+  color: #FF6A2C;
+}
+
 .content {
   padding: 15px;
   display: flex;
@@ -94,6 +112,7 @@
   position: relative;
   margin-top: 40px;
   z-index: 1;
+  animation: fadeIn 0.5s ease-out forwards;
 }
 
 .headerContainer {
@@ -456,6 +475,10 @@
   border-left: 3px solid #FF6A2C;
 }
 
+.noDueDateItem {
+  border-left: 3px solid #9E9E9E;
+}
+
 .unsyncedItemHeader {
   display: flex;
   gap: 12px;
@@ -504,6 +527,11 @@
   color: #FF6A2C;
 }
 
+.noDueDateDue {
+  color: #9E9E9E;
+  font-style: italic;
+}
+
 .dueIcon {
   font-size: 11px;
 }
@@ -523,7 +551,7 @@
   align-items: center;
   justify-content: center;
   padding: 20px 10px;
-  gap: 12px;
+  gap: 20px;
 }
 
 .emptyStateIcon {
@@ -558,4 +586,20 @@
 .clearButton:hover {
   background: rgba(255, 255, 255, 0.1);
   color: #FFFFFF;
+}
+
+/* Add fade-in animation for Dashboard */
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fadeIn {
+  animation: fadeIn 0.5s ease-out forwards;
 }

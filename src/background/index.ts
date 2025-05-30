@@ -30,7 +30,7 @@ async function syncWithNotion(courses: any[], assignments: any[], message: any) 
     const simplifiedAssignments = assignments.map(assignment => ({
       id: assignment.id,
       name: assignment.name,
-      courseId: assignment.course_id,
+      courseId: assignment.courseId,
       due_at: assignment.due_at,
       points_possible: assignment.points_possible,
       html_url: assignment.html_url
@@ -103,7 +103,7 @@ async function compareWithNotion(courses: any[], assignments: any[], pageId: str
     const simplifiedAssignments = assignments.map(assignment => ({
       id: assignment.id,
       name: assignment.name,
-      courseId: assignment.course_id,
+      courseId: assignment.courseId,
       due_at: assignment.due_at,
       points_possible: assignment.points_possible,
       html_url: assignment.html_url

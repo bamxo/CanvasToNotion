@@ -5,7 +5,7 @@
  * It shows sync status, recent syncs, and provides controls for manual syncing.
  */
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import styles from './Dashboard.module.css'
 import { getAuth, onAuthStateChanged } from 'firebase/auth'
 import AppBar from './AppBar'
@@ -13,7 +13,7 @@ import PageSelector from './PageSelector'
 import PageSelectionContainer from './PageSelectionContainer'
 import UnsyncedContainer from './UnsyncedContainer'
 import SyncButton from './SyncButton'
-import mockUnsyncedItems from '../data/mockUnsyncedItems.json'
+import { UnsyncedItem, transformCanvasAssignments } from '../utils/assignmentTransformer'
 
 interface NotionPage {
   id: string;
@@ -25,16 +25,6 @@ interface NotionPage {
 interface SyncData {
   email: string;
   pageId: string;
-}
-
-interface UnsyncedItem {
-  id: string;
-  type: string;
-  title: string;
-  course: string;
-  due_date: string;
-  status: string;
-  points: number;
 }
 
 // Particle component
@@ -50,12 +40,20 @@ const Particle = ({ delay }: { delay: number }) => {
 
 const Dashboard = () => {
   const [isLoading, setIsLoading] = useState(false)
+  const [isComparing, setIsComparing] = useState(false)
   const [lastSync, setLastSync] = useState<string | null>(null)
   const [syncStatus, setSyncStatus] = useState<'success' | 'error' | null>(null)
   const [showPageSelector, setShowPageSelector] = useState(false)
   const [selectedPage, setSelectedPage] = useState<NotionPage | null>(null)
   const [userEmail, setUserEmail] = useState<string | null>(null)
-  const [unsyncedItems, setUnsyncedItems] = useState<UnsyncedItem[]>(mockUnsyncedItems.unsyncedItems)
+  const [unsyncedItems, setUnsyncedItems] = useState<UnsyncedItem[]>([])
+
+  // Generate array of particles with useRef to avoid re-creation on re-renders
+  const particles = useRef(
+    Array.from({ length: 20 }, (_, i) => (
+      <Particle key={i} delay={i * 0.3} />
+    ))
+  ).current;
 
   useEffect(() => {
     const auth = getAuth();
@@ -91,6 +89,13 @@ const Dashboard = () => {
     return () => unsubscribe();
   }, []);
 
+  // New effect to trigger comparison when page is selected
+  useEffect(() => {
+    if (selectedPage && userEmail) {
+      compareWithNotion();
+    }
+  }, [selectedPage, userEmail]);
+
   // Debug log whenever email or selectedPage changes
   useEffect(() => {
     console.log('Current user email:', userEmail);
@@ -101,6 +106,80 @@ const Dashboard = () => {
       chrome.storage.local.set({ userEmail });
     }
   }, [userEmail, selectedPage]);
+
+  // New function to compare Canvas assignments with Notion
+  const compareWithNotion = async () => {
+    if (!selectedPage || !userEmail) {
+      console.log('Cannot compare: missing page or email');
+      return;
+    }
+    
+    try {
+      setIsComparing(true);
+      
+      // Prepare compare data
+      const compareData = {
+        email: userEmail,
+        pageId: selectedPage.id,
+      };
+
+      console.log('Sending COMPARE message with data:', compareData);
+      
+      // Send the compare request to background script
+      const response = await chrome.runtime.sendMessage({
+        type: 'COMPARE',
+        data: compareData
+      });
+      
+      console.log('Compare response:', response);
+      
+      if (response && response.success && response.data) {
+        // Check if we have a compareResult with the comparison data
+        if (response.data.compareResult?.comparison) {
+          // The compareResult structure has a comparison object with course names as keys
+          // Each course has an onlyInCanvas array that contains assignments to sync
+          const unsyncedAssignments: any[] = [];
+          
+          // Iterate through each course in the comparison object
+          Object.keys(response.data.compareResult.comparison).forEach(courseName => {
+            const courseData = response.data.compareResult.comparison[courseName];
+            
+            // Add all assignments from onlyInCanvas array
+            if (courseData.onlyInCanvas && courseData.onlyInCanvas.length > 0) {
+              unsyncedAssignments.push(...courseData.onlyInCanvas);
+            }
+          });
+          
+          console.log('Extracted unsynced assignments:', unsyncedAssignments);
+          
+          if (unsyncedAssignments.length > 0) {
+            // Transform the unsynced assignments
+            const formattedUnsyncedItems = transformCanvasAssignments(
+              unsyncedAssignments,
+              response.data.courses || []
+            );
+            
+            console.log('Formatted unsynced items:', formattedUnsyncedItems);
+            setUnsyncedItems(formattedUnsyncedItems);
+          } else {
+            console.log('No unsynced assignments found in compareResult');
+            setUnsyncedItems([]);
+          }
+        } else {
+          console.log('No comparison data found in compareResult');
+          setUnsyncedItems([]);
+        }
+      } else {
+        console.error('Compare failed or returned invalid data:', response);
+        setUnsyncedItems([]);
+      }
+    } catch (error) {
+      console.error('Error comparing with Notion:', error);
+      setUnsyncedItems([]);
+    } finally {
+      setIsComparing(false);
+    }
+  };
 
   const handleSync = async () => {
     if (!selectedPage || !userEmail) {
@@ -149,6 +228,7 @@ const Dashboard = () => {
     setShowPageSelector(false)
     // Store selected page in chrome storage
     chrome.storage.local.set({ selectedNotionPage: page, showPageSelector: false });
+    // Compare will be triggered by the useEffect
   }
 
   const handleChangePageClick = () => {
@@ -157,11 +237,6 @@ const Dashboard = () => {
     // Store the state in chrome.storage.local
     chrome.storage.local.set({ selectedNotionPage: null, showPageSelector: true });
   }
-
-  // Generate array of particles
-  const particles = Array.from({ length: 20 }, (_, i) => (
-    <Particle key={i} delay={i * 0.3} />
-  ));
 
   if (showPageSelector) {
     return <PageSelector onPageSelect={handlePageSelect} />
@@ -181,7 +256,7 @@ const Dashboard = () => {
       <AppBar />
       {particles}
 
-      <div className={styles.content}>
+      <div className={`${styles.content} ${styles.fadeIn}`}>
         <PageSelectionContainer 
           selectedPage={selectedPage}
           onPageSelect={() => setShowPageSelector(true)}
@@ -193,6 +268,7 @@ const Dashboard = () => {
           <UnsyncedContainer 
             unsyncedItems={unsyncedItems}
             onClearItems={() => setUnsyncedItems([])}
+            isLoading={isComparing}
           />
         )}
 

@@ -20,9 +20,11 @@
     "test:coverage": "vitest run --coverage && open coverage/index.html"
   },
   "dependencies": {
+    "@firebase/auth": "^1.10.6",
     "@notionhq/client": "^2.3.0",
     "axios": "^1.8.4",
     "firebase": "^11.6.1",
+    "idb": "^8.0.3",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-icons": "^5.5.0"
