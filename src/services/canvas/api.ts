@@ -79,7 +79,7 @@ export class CanvasApi {
 
     for (const course of courses) {
       try {
-        const response = await fetch(`${this.baseUrl}/courses/${course.id}/assignments`);
+        const response = await fetch(`${this.baseUrl}/courses/${course.id}/assignments?per_page=100`);
         if (!response.ok) continue;
 
         const courseAssignments = await response.json();
