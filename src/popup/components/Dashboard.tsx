@@ -42,7 +42,8 @@ const Dashboard = () => {
   const [isLoading, setIsLoading] = useState(false)
   const [isComparing, setIsComparing] = useState(false)
   const [lastSync, setLastSync] = useState<string | null>(null)
-  const [syncStatus, setSyncStatus] = useState<'success' | 'error' | null>(null)
+  const [syncStatus, setSyncStatus] = useState<'success' | 'error' | 'partial' | null>(null)
+  const [syncErrorMessage, setSyncErrorMessage] = useState<string | null>(null)
   const [showPageSelector, setShowPageSelector] = useState(false)
   const [selectedPage, setSelectedPage] = useState<NotionPage | null>(null)
   const [userEmail, setUserEmail] = useState<string | null>(null)
@@ -106,6 +107,15 @@ const Dashboard = () => {
       chrome.storage.local.set({ userEmail });
     }
   }, [userEmail, selectedPage]);
+
+  // Add effect to check unsynced items after they're updated
+  useEffect(() => {
+    // If we have a successful sync but still have unsynced items, change to partial
+    if (syncStatus === 'success' && unsyncedItems.length > 0) {
+      setSyncStatus('partial');
+      setSyncErrorMessage('Some items could not be synced');
+    }
+  }, [unsyncedItems, syncStatus]);
 
   // New function to compare Canvas assignments with Notion
   const compareWithNotion = async () => {
@@ -188,6 +198,7 @@ const Dashboard = () => {
         hasUserEmail: !!userEmail
       });
       setSyncStatus('error');
+      setSyncErrorMessage('Missing required data: page or user email');
       console.error('Missing required data: page or user email');
       return;
     }
@@ -195,7 +206,7 @@ const Dashboard = () => {
     try {
       setIsLoading(true)
       setSyncStatus(null)
-      
+      setSyncErrorMessage(null)
       
       // Prepare sync data
       const syncData: SyncData = {
@@ -204,21 +215,38 @@ const Dashboard = () => {
       };
 
       // Send the sync data to background script
-      await chrome.runtime.sendMessage({
+      const response = await chrome.runtime.sendMessage({
         type: 'SYNC_TO_NOTION',
         data: syncData
       });
       
-      setSyncStatus('success')
-      setLastSync(new Date().toLocaleString())
+      // Check if the response indicates an error
+      if (response && response.error) {
+        setSyncStatus('error');
+        setSyncErrorMessage(response.error);
+        console.error('Sync error:', response.error);
+      } else if (response && response.partial) {
+        // Handle partial sync (some items synced but errors occurred)
+        setSyncStatus('partial');
+        setSyncErrorMessage(response.errorMessage || 'Some items could not be synced');
+        console.warn('Partial sync completed with warning:', response.errorMessage);
+      } else {
+        // Success case
+        setSyncStatus('success');
+        setLastSync(new Date().toLocaleString());
+      }
       
-      // Clear unsynced items after successful sync (in real implementation, this would be updated based on actual sync results)
-      setUnsyncedItems([])
+      // Refresh unsynced items after sync attempt (regardless of outcome)
+      await compareWithNotion();
+      
+      // Status will be updated by the useEffect when unsyncedItems changes
+      
     } catch (error) {
-      setSyncStatus('error')
-      console.error('Sync failed:', error)
+      console.error('Sync failed:', error);
+      setSyncStatus('error');
+      setSyncErrorMessage(error instanceof Error ? error.message : 'Unknown error occurred during sync');
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
   }
 
@@ -278,6 +306,7 @@ const Dashboard = () => {
           disabled={buttonDisabled}
           lastSync={lastSync}
           syncStatus={syncStatus}
+          syncErrorMessage={syncErrorMessage}
         />
       </div>
     </div>

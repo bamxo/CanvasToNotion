@@ -5,7 +5,8 @@ interface SyncButtonProps {
   isLoading: boolean;
   disabled: boolean;
   lastSync: string | null;
-  syncStatus: 'success' | 'error' | null;
+  syncStatus: 'success' | 'error' | 'partial' | null;
+  syncErrorMessage: string | null;
 }
 
 const SyncButton = ({
@@ -26,6 +27,11 @@ const SyncButton = ({
         {syncStatus === 'success' && (
           <div className={styles.successMessage}>
             ✓ Sync completed successfully
+          </div>
+        )}
+        {syncStatus === 'partial' && (
+          <div className={styles.partialMessage}>
+            ⚠ Sync partially completed
           </div>
         )}
         {syncStatus === 'error' && (

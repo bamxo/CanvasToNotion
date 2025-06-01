@@ -4,6 +4,7 @@ import defaultProfile from '../../assets/default.svg'
 import settingIcon from '../../assets/setting.svg'
 import logoutIcon from '../../assets/logout.svg'
 import { getAuth, onAuthStateChanged } from 'firebase/auth'
+import { isDevelopment } from '../../services/api.config'
 
 const AppBar = () => {
   const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -80,8 +81,13 @@ const AppBar = () => {
 
   const handleSettings = () => {
     try {
+      // Determine the settings URL based on environment
+      const webAppBaseUrl = isDevelopment 
+        ? 'http://localhost:5173'
+        : 'https://canvastonotion.netlify.app';
+        
       // Open the settings page in a new tab
-      chrome.tabs.create({ url: 'http://localhost:5173/settings' })
+      chrome.tabs.create({ url: `${webAppBaseUrl}/settings` })
       window.close() // Close the popup after redirecting
     } catch (err) {
       console.error(err)

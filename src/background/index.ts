@@ -3,6 +3,7 @@ console.log('Background script initializing...');
 
 import { canvasApi } from '../services/canvas/api';
 import './auth';  // Import auth module to initialize token handling
+import { API_BASE_URL, ENDPOINTS } from '../services/api.config';
 
 console.log('Background script initialized, auth module imported');
 
@@ -38,9 +39,9 @@ async function syncWithNotion(courses: any[], assignments: any[], message: any) 
     
     // First, check if the server is reachable
     try {
-      await fetch('http://localhost:3000', { method: 'HEAD' });
+      await fetch(API_BASE_URL, { method: 'HEAD' });
     } catch (e) {
-      console.warn('Server might not be running at localhost:3000');
+      console.warn(`Server might not be running at ${API_BASE_URL}`);
     }
     
     const payload = {
@@ -57,7 +58,7 @@ async function syncWithNotion(courses: any[], assignments: any[], message: any) 
     
     console.log('Sending sync payload:', payload);
     
-    const response = await fetch('http://localhost:3000/api/notion/sync', {
+    const response = await fetch(ENDPOINTS.SYNC, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -111,9 +112,9 @@ async function compareWithNotion(courses: any[], assignments: any[], pageId: str
     
     // First, check if the server is reachable
     try {
-      await fetch('http://localhost:3000', { method: 'HEAD' });
+      await fetch(API_BASE_URL, { method: 'HEAD' });
     } catch (e) {
-      console.warn('Server might not be running at localhost:3000');
+      console.warn(`Server might not be running at ${API_BASE_URL}`);
     }
     
     const payload = {
@@ -130,7 +131,7 @@ async function compareWithNotion(courses: any[], assignments: any[], pageId: str
     
     console.log('Sending compare payload:', payload);
     
-    const response = await fetch('http://localhost:3000/api/notion/compare', {
+    const response = await fetch(ENDPOINTS.COMPARE, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

@@ -161,6 +161,22 @@
   font-weight: 500;
 }
 
+.partialMessage {
+  color: #FFA500;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.errorDetails {
+  color: #999;
+  font-size: 12px;
+  margin-top: 4px;
+  font-weight: 400;
+  max-width: 280px;
+  overflow-wrap: break-word;
+  white-space: normal;
+}
+
 .syncButton {
   background: linear-gradient(90deg, #FF6A2C 0%, #EF5223 100%);
   border: none;

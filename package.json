@@ -6,7 +6,11 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:dev": "vite build --mode development",
+    "build:prod": "vite build --mode production",
     "build:extension": "vite build && cp public/manifest.json dist/ && cp public/vite.svg dist/",
+    "build:extension:dev": "VITE_APP_ENV=development vite build --mode development && cp public/manifest.json dist/ && cp public/vite.svg dist/",
+    "build:extension:prod": "VITE_APP_ENV=production vite build --mode production && cp public/manifest.json dist/ && cp public/vite.svg dist/",
     "lint": "eslint . --ext js,jsx,ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
     "test": "vitest run --coverage",

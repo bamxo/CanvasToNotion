@@ -10,6 +10,7 @@ import { useState, useEffect } from 'react'
 import styles from './LoginRedirect.module.css'
 import logo from '../../assets/c2n_logo dark.svg'
 import { signInWithEmail } from '../../services/auth.service';
+import { isDevelopment } from '../../services/api.config';
 
 // Particle component
 const Particle = ({ delay }: { delay: number }) => {
@@ -53,8 +54,13 @@ const LoginRedirect = () => {
       setIsLoading(true)
       setError(null)
       
+      // Determine the login URL based on environment
+      const webAppBaseUrl = isDevelopment 
+        ? 'http://localhost:5173'
+        : 'https://canvastonotion.netlify.app';
+      
       // Open the webapp login page in a new tab
-      chrome.tabs.create({ url: 'http://localhost:5173/lookup' })
+      chrome.tabs.create({ url: `${webAppBaseUrl}/lookup` })
       window.close() // Close the popup after redirecting
     } catch (err) {
       console.error(err)

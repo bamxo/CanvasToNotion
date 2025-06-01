@@ -5,6 +5,7 @@ import styles from './PageSelector.module.css';
 import AppBar from './AppBar';
 import NotionDisconnected from './NotionDisconnected';
 import DefaultPageView from './DefaultPageView';
+import { ENDPOINTS } from '../../services/api.config';
 
 interface NotionPage {
   id: string;
@@ -96,7 +97,7 @@ const PageSelector: React.FC<PageSelectorProps> = ({ onPageSelect }) => {
       }
 
       console.log('Checking Notion connection for email:', userEmail);
-      const response = await axios.get('http://localhost:3000/api/notion/connected', {
+      const response = await axios.get(ENDPOINTS.CONNECTED, {
         params: { email: userEmail },
         timeout: 5000
       });
@@ -137,7 +138,7 @@ const PageSelector: React.FC<PageSelectorProps> = ({ onPageSelect }) => {
         throw new Error('User email not found');
       }
 
-      const response = await axios.get('http://localhost:3000/api/notion/pages', {
+      const response = await axios.get(ENDPOINTS.PAGES, {
         params: { email: userEmail },
         signal: abortControllerRef.current.signal,
         timeout: 5000 // Add timeout to prevent hanging requests
