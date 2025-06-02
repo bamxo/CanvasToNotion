@@ -149,6 +149,17 @@
   margin: 0;
 }
 
+.successMessage, .errorMessage, .partialMessage {
+  opacity: 0;
+  transform: translateY(10px);
+  transition: all 0.3s ease-out;
+}
+
+.successMessage.fadeIn, .errorMessage.fadeIn, .partialMessage.fadeIn {
+  opacity: 1;
+  transform: translateY(0);
+}
+
 .successMessage {
   color: #4CAF50;
   font-size: 14px;
@@ -187,12 +198,16 @@
   font-size: 15px;
   font-weight: 500;
   color: #FFFFFF;
-  transition: opacity 0.2s;
+  transition: transform 0.2s, opacity 0.2s;
   width: 280px;
 }
 
-.syncButton:hover {
-  opacity: 0.9;
+.syncButton:hover:not(:disabled) {
+  transform: scale(1.02);
+}
+
+.syncButton:active:not(:disabled) {
+  transform: scale(0.98);
 }
 
 .syncButton:disabled {
@@ -481,10 +496,16 @@
   border-radius: 8px;
   padding: 10px;
   transition: all 0.2s;
+  opacity: 0;
+  transform: translateY(10px);
 }
 
 .unsyncedItem:hover {
   background: rgba(255, 255, 255, 0.1);
+}
+
+.unsyncedItem.fadeIn {
+  animation: fadeIn 0.3s ease-out forwards;
 }
 
 .overdueItem {
@@ -568,6 +589,8 @@
   justify-content: center;
   padding: 20px 10px;
   gap: 20px;
+  opacity: 0;
+  transform: translateY(10px);
 }
 
 .emptyStateIcon {
@@ -618,4 +641,33 @@
 
 .fadeIn {
   animation: fadeIn 0.5s ease-out forwards;
+}
+
+/* Add a slight scale effect for empty state */
+@keyframes fadeInScale {
+  0% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.emptyStateContainer.fadeIn {
+  animation: fadeInScale 0.4s ease-out forwards;
+}
+
+/* Add a slight scale effect for the sync button on hover */
+.syncButton {
+  transition: transform 0.2s, opacity 0.2s;
+}
+
+.syncButton:hover:not(:disabled) {
+  transform: scale(1.02);
+}
+
+.syncButton:active:not(:disabled) {
+  transform: scale(0.98);
 }

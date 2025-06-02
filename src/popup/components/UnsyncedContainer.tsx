@@ -7,6 +7,7 @@ import {
   FaClock,
   FaSync
 } from 'react-icons/fa';
+import { useState, useEffect } from 'react';
 import styles from './Dashboard.module.css';
 
 interface UnsyncedItem {
@@ -30,6 +31,24 @@ const UnsyncedContainer = ({
   onClearItems,
   isLoading = false
 }: UnsyncedContainerProps) => {
+  const [animate, setAnimate] = useState(false);
+  const [prevItemCount, setPrevItemCount] = useState(unsyncedItems.length);
+
+  // Trigger animation when items change
+  useEffect(() => {
+    // If item count changed, trigger animation
+    if (prevItemCount !== unsyncedItems.length || isLoading) {
+      setAnimate(false);
+      // Small delay to ensure animation triggers correctly
+      setTimeout(() => {
+        setAnimate(true);
+        setPrevItemCount(unsyncedItems.length);
+      }, 50);
+    } else if (!animate) {
+      // Initial animation on component mount
+      setAnimate(true);
+    }
+  }, [unsyncedItems, isLoading, prevItemCount]);
 
   const formatDueDate = (dateString: string) => {
     if (!dateString) {
@@ -96,20 +115,22 @@ const UnsyncedContainer = ({
       </div>
       
       {isLoading ? (
-        <div className={styles.emptyStateContainer}>
+        <div className={`${styles.emptyStateContainer} ${animate ? styles.fadeIn : ''}`}>
           <FaSync className={`${styles.emptyStateIcon} ${styles.rotating}`} />
           <p className={styles.emptyStateText}>Comparing Canvas with Notion...</p>
         </div>
       ) : unsyncedItems.length > 0 ? (
-        <div className={styles.unsyncedItemsList}>
-          {unsyncedItems.map((item) => (
+        <div className={`${styles.unsyncedItemsList} ${animate ? styles.fadeIn : ''}`}>
+          {unsyncedItems.map((item, index) => (
             <div 
               key={item.id} 
               className={`
                 ${styles.unsyncedItem} 
                 ${item.status === 'overdue' ? styles.overdueItem : ''} 
                 ${item.status === 'no-due-date' ? styles.noDueDateItem : ''}
+                ${animate ? styles.fadeIn : ''}
               `}
+              style={{ animationDelay: `${index * 0.05}s` }}
             >
               <div className={styles.unsyncedItemHeader}>
                 {getItemIcon(item.type)}
@@ -129,7 +150,7 @@ const UnsyncedContainer = ({
           ))}
         </div>
       ) : (
-        <div className={styles.emptyStateContainer}>
+        <div className={`${styles.emptyStateContainer} ${animate ? styles.fadeIn : ''}`}>
           <FaCalendarAlt className={styles.emptyStateIcon} />
           <p className={styles.emptyStateText}>Everything is up to date! No items to sync.</p>
         </div>

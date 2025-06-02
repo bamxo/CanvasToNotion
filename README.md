@@ -41,6 +41,14 @@ npm run build
 ```
 This will create a `dist` folder containing the built extension files.
 
+### Production Build
+
+To build the extension for production using deployed Netlify endpoints:
+```bash
+npm run build:extension:prod
+```
+This creates a production-ready `dist` folder with the extension configured to use the deployed production endpoints.
+
 2. Load the extension in Chrome:
    - Open Chrome and navigate to `chrome://extensions/`
    - Enable "Developer mode" in the top right corner

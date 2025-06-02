@@ -43,7 +43,6 @@ const Dashboard = () => {
   const [isComparing, setIsComparing] = useState(false)
   const [lastSync, setLastSync] = useState<string | null>(null)
   const [syncStatus, setSyncStatus] = useState<'success' | 'error' | 'partial' | null>(null)
-  const [syncErrorMessage, setSyncErrorMessage] = useState<string | null>(null)
   const [showPageSelector, setShowPageSelector] = useState(false)
   const [selectedPage, setSelectedPage] = useState<NotionPage | null>(null)
   const [userEmail, setUserEmail] = useState<string | null>(null)
@@ -108,20 +107,11 @@ const Dashboard = () => {
     }
   }, [userEmail, selectedPage]);
 
-  // Add effect to check unsynced items after they're updated
-  useEffect(() => {
-    // If we have a successful sync but still have unsynced items, change to partial
-    if (syncStatus === 'success' && unsyncedItems.length > 0) {
-      setSyncStatus('partial');
-      setSyncErrorMessage('Some items could not be synced');
-    }
-  }, [unsyncedItems, syncStatus]);
-
   // New function to compare Canvas assignments with Notion
-  const compareWithNotion = async () => {
+  const compareWithNotion = async (): Promise<number> => {
     if (!selectedPage || !userEmail) {
       console.log('Cannot compare: missing page or email');
-      return;
+      return 0;
     }
     
     try {
@@ -171,21 +161,26 @@ const Dashboard = () => {
             
             console.log('Formatted unsynced items:', formattedUnsyncedItems);
             setUnsyncedItems(formattedUnsyncedItems);
+            return formattedUnsyncedItems.length;
           } else {
             console.log('No unsynced assignments found in compareResult');
             setUnsyncedItems([]);
+            return 0;
           }
         } else {
           console.log('No comparison data found in compareResult');
           setUnsyncedItems([]);
+          return 0;
         }
       } else {
         console.error('Compare failed or returned invalid data:', response);
         setUnsyncedItems([]);
+        return 0;
       }
     } catch (error) {
       console.error('Error comparing with Notion:', error);
       setUnsyncedItems([]);
+      return 0;
     } finally {
       setIsComparing(false);
     }
@@ -198,7 +193,6 @@ const Dashboard = () => {
         hasUserEmail: !!userEmail
       });
       setSyncStatus('error');
-      setSyncErrorMessage('Missing required data: page or user email');
       console.error('Missing required data: page or user email');
       return;
     }
@@ -206,7 +200,6 @@ const Dashboard = () => {
     try {
       setIsLoading(true)
       setSyncStatus(null)
-      setSyncErrorMessage(null)
       
       // Prepare sync data
       const syncData: SyncData = {
@@ -220,32 +213,55 @@ const Dashboard = () => {
         data: syncData
       });
       
+      // Store initial sync response status
+      let initialSyncStatus: 'success' | 'error' | 'partial' | null = null;
+      
       // Check if the response indicates an error
       if (response && response.error) {
+        // For error responses, update status immediately
+        initialSyncStatus = 'error';
         setSyncStatus('error');
-        setSyncErrorMessage(response.error);
         console.error('Sync error:', response.error);
-      } else if (response && response.partial) {
-        // Handle partial sync (some items synced but errors occurred)
-        setSyncStatus('partial');
-        setSyncErrorMessage(response.errorMessage || 'Some items could not be synced');
-        console.warn('Partial sync completed with warning:', response.errorMessage);
+        setIsLoading(false);
       } else {
-        // Success case
-        setSyncStatus('success');
+        // For successful or partial syncs, we'll verify with compare API
+        if (response && response.partial) {
+          initialSyncStatus = 'partial';
+          console.warn('Partial sync detected, verifying with compare API...');
+        } else {
+          initialSyncStatus = 'success';
+          console.log('Sync appears successful, verifying with compare API...');
+        }
+        
+        // Update timestamp regardless of final status
         setLastSync(new Date().toLocaleString());
+        
+        // Run compareWithNotion to check for any remaining unsynced assignments
+        try {
+          const unsyncedCount = await compareWithNotion();
+          console.log(`Compare complete. Found ${unsyncedCount} unsynced assignments.`);
+          
+          // Determine final status based on unsynced items
+          if (unsyncedCount > 0) {
+            // If we still have unsynced items, mark as partial
+            setSyncStatus('partial');
+            console.log('Setting status to partial due to remaining unsynced assignments');
+          } else {
+            // If no unsynced items, use the initial status (success or partial)
+            setSyncStatus(initialSyncStatus);
+            console.log(`Setting status to ${initialSyncStatus} as no unsynced assignments remain`);
+          }
+        } catch (compareError) {
+          console.error('Error during compare after sync:', compareError);
+          // If compare fails but sync appeared successful, still show the initial status
+          setSyncStatus(initialSyncStatus);
+        } finally {
+          setIsLoading(false);
+        }
       }
-      
-      // Refresh unsynced items after sync attempt (regardless of outcome)
-      await compareWithNotion();
-      
-      // Status will be updated by the useEffect when unsyncedItems changes
-      
     } catch (error) {
       console.error('Sync failed:', error);
       setSyncStatus('error');
-      setSyncErrorMessage(error instanceof Error ? error.message : 'Unknown error occurred during sync');
-    } finally {
       setIsLoading(false);
     }
   }
@@ -306,7 +322,6 @@ const Dashboard = () => {
           disabled={buttonDisabled}
           lastSync={lastSync}
           syncStatus={syncStatus}
-          syncErrorMessage={syncErrorMessage}
         />
       </div>
     </div>
