@@ -70,6 +70,20 @@ const AppBar = () => {
         'userId'
       ]);
       
+      // Send logout message to web app
+      try {
+        await chrome.tabs.query({ url: 'http://localhost:5173/*' }, async (tabs) => {
+          for (const tab of tabs) {
+            if (tab.id) {
+              await chrome.tabs.sendMessage(tab.id, { type: 'LOGOUT' });
+            }
+          }
+        });
+      } catch (extError) {
+        console.error('Failed to notify web app about logout:', extError);
+        // Don't block logout if web app notification fails
+      }
+      
       console.log('Logout completed successfully');
       // Force reload the popup window
       window.location.reload();

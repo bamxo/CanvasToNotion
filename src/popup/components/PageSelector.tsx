@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { getAuth } from 'firebase/auth';
+import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import styles from './PageSelector.module.css';
 import AppBar from './AppBar';
 
@@ -18,19 +18,61 @@ const PageSelector: React.FC<PageSelectorProps> = ({ onPageSelect }) => {
   const [pages, setPages] = useState<NotionPage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [isAuthInitialized, setIsAuthInitialized] = useState(false);
 
   useEffect(() => {
+    const auth = getAuth();
+    let mounted = true;
+    
+    // Set up auth state listener
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (!mounted) return;
+
+      if (user?.email) {
+        console.log('User email found:', user.email);
+        setUserEmail(user.email);
+        // Store email in chrome storage
+        await chrome.storage.local.set({ userEmail: user.email });
+        setIsAuthInitialized(true);
+      } else {
+        console.log('No user email from auth, checking storage...');
+        // If we don't have a user email from auth state, try to get it from storage
+        chrome.storage.local.get(['userEmail'], (result) => {
+          if (!mounted) return;
+          
+          if (result.userEmail) {
+            console.log('User email found in storage:', result.userEmail);
+            setUserEmail(result.userEmail);
+            setIsAuthInitialized(true);
+          } else {
+            console.log('No user email found in storage');
+            setError('User email not found. Please log in again.');
+            setIsLoading(false);
+          }
+        });
+      }
+    });
+
+    // Cleanup auth listener
+    return () => {
+      mounted = false;
+      unsubscribe();
+    };
+  }, []);
+
+  // Separate effect to handle page fetching once auth is initialized
+  useEffect(() => {
+    if (!isAuthInitialized || !userEmail) return;
+
     const fetchPages = async () => {
       try {
-        const auth = getAuth();
-        const user = auth.currentUser;
-        
-        if (!user?.email) {
-          throw new Error('User email not found');
-        }
+        setIsLoading(true);
+        setError(null);
+        console.log('Fetching pages for email:', userEmail);
 
         const response = await axios.get('http://localhost:3000/api/notion/pages', {
-          params: { email: user.email }
+          params: { email: userEmail }
         });
 
         setPages(response.data.pages);
@@ -42,8 +84,13 @@ const PageSelector: React.FC<PageSelectorProps> = ({ onPageSelect }) => {
       }
     };
 
-    fetchPages();
-  }, []);
+    // Add a small delay to ensure auth is fully initialized
+    const timer = setTimeout(() => {
+      fetchPages();
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [isAuthInitialized, userEmail]);
 
   const handleCreateNewPage = () => {
     // TODO: Implement create new page functionality

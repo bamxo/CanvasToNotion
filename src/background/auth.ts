@@ -80,11 +80,33 @@ chrome.runtime.onMessageExternal.addListener(
           'tokenTimestamp',
           'userEmail',
           'userId',
-          'canvasToken'
+          'canvasToken',
+          'isGuestMode',
+          'selectedPage'
         ]);
         
         // Notify popup
         chrome.runtime.sendMessage({ type: 'LOGOUT_SUCCESS' });
+        
+        // Notify web app about logout by injecting a script
+        try {
+          await chrome.tabs.query({ url: 'http://localhost:5173/*' }, async (tabs) => {
+            for (const tab of tabs) {
+              if (tab.id) {
+                await chrome.scripting.executeScript({
+                  target: { tabId: tab.id },
+                  func: () => {
+                    window.postMessage({ type: 'LOGOUT' }, 'http://localhost:5173');
+                  }
+                });
+              }
+            }
+          });
+          console.log('Successfully notified web app about logout');
+        } catch (webAppError) {
+          console.error('Failed to notify web app about logout:', webAppError);
+          // Don't block logout if web app notification fails
+        }
         
         console.log("Successfully logged out");
         sendResponse({ success: true });
