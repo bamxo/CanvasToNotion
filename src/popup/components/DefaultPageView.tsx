@@ -13,14 +13,12 @@ interface DefaultPageViewProps {
   pages: NotionPage[];
   isLoading: boolean;
   onPageSelect: (page: NotionPage) => void;
-  onCreateNewPage: () => void;
 }
 
 const DefaultPageView: React.FC<DefaultPageViewProps> = ({ 
   pages, 
   isLoading, 
-  onPageSelect, 
-  onCreateNewPage 
+  onPageSelect
 }) => {
   const [isVisible, setIsVisible] = useState(false);
   
@@ -47,13 +45,6 @@ const DefaultPageView: React.FC<DefaultPageViewProps> = ({
       </div>
 
       <div className={styles.pageList}>
-        <button
-          className={`${styles.pageItem} ${styles.createPageItem}`}
-          onClick={onCreateNewPage}
-        >
-          <span className={styles.pageIcon}>+</span>
-          <span className={styles.pageTitle}>Create New Page</span>
-        </button>
         {pages.map((page: NotionPage) => (
           <button
             key={page.id}

@@ -238,11 +238,6 @@ const PageSelector: React.FC<PageSelectorProps> = ({ onPageSelect }) => {
     setRefreshKey(prevKey => prevKey + 1);
   };
 
-  const handleCreateNewPage = () => {
-    // TODO: Implement create new page functionality
-    console.log('Create new page clicked');
-  };
-
   const handlePageSelect = (page: NotionPage) => {
     onPageSelect(page);
   };
@@ -367,7 +362,6 @@ const PageSelector: React.FC<PageSelectorProps> = ({ onPageSelect }) => {
           pages={pages}
           isLoading={isLoading}
           onPageSelect={handlePageSelect}
-          onCreateNewPage={handleCreateNewPage}
         />
       </div>
     </div>

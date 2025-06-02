@@ -1,7 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
 
 .container {
-  min-width: 368px;
+  min-width: 350px;
   font-family: 'Poppins', sans-serif;
   display: flex;
   flex-direction: column;
@@ -98,7 +98,7 @@
   flex-direction: column;
   align-items: center;
   gap: 8px;
-  margin-bottom: 12px;
+  margin-bottom: 20px;
 }
 
 .logo {
@@ -128,7 +128,7 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  max-height: 300px;
+  max-height: 240px;
   overflow-y: auto;
   padding-right: 10px;
   margin: 10px 0;
@@ -181,48 +181,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.createPageItem {
-  border-style: dashed;
-  margin-bottom: 8px;
-}
-
-.createPageItem .pageIcon {
-  font-size: 20px;
-  font-weight: 300;
-}
-
-.createPageItem:hover {
-  background: rgba(255, 106, 44, 0.1);
-  border-color: rgba(255, 106, 44, 0.3);
-}
-
-.createPageButton {
-  background: linear-gradient(90deg, #FF6A2C 0%, #EF5223 100%);
-  border: none;
-  border-radius: 7px;
-  padding: 12px 40px;
-  cursor: pointer;
-  font-family: 'Poppins', sans-serif;
-  font-size: 15px;
-  font-weight: 500;
-  color: #FFFFFF;
-  transition: opacity 0.2s;
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
-
-.createPageButton:hover {
-  opacity: 0.9;
-}
-
-.plusIcon {
-  width: 16px;
-  height: 16px;
 }
 
 .loadingContainer,
