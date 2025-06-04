@@ -14,6 +14,7 @@ import PageSelectionContainer from './PageSelectionContainer'
 import UnsyncedContainer from './UnsyncedContainer'
 import SyncButton from './SyncButton'
 import { UnsyncedItem, transformCanvasAssignments } from '../utils/assignmentTransformer'
+import { isDevelopment, isProduction } from '../../services/api.config'
 
 interface NotionPage {
   id: string;
@@ -198,8 +199,8 @@ const Dashboard = () => {
     }
 
     try {
-      setIsLoading(true)
-      setSyncStatus(null)
+      setIsLoading(true);
+      setSyncStatus(null);
       
       // Prepare sync data
       const syncData: SyncData = {
@@ -207,62 +208,198 @@ const Dashboard = () => {
         pageId: selectedPage.id,
       };
 
-      // Send the sync data to background script
-      const response = await chrome.runtime.sendMessage({
-        type: 'SYNC_TO_NOTION',
-        data: syncData
-      });
-      
-      // Store initial sync response status
-      let initialSyncStatus: 'success' | 'error' | 'partial' | null = null;
-      
-      // Check if the response indicates an error
-      if (response && response.error) {
-        // For error responses, update status immediately
-        initialSyncStatus = 'error';
-        setSyncStatus('error');
-        console.error('Sync error:', response.error);
-        setIsLoading(false);
-      } else {
-        // For successful or partial syncs, we'll verify with compare API
-        if (response && response.partial) {
-          initialSyncStatus = 'partial';
-          console.warn('Partial sync detected, verifying with compare API...');
-        } else {
-          initialSyncStatus = 'success';
-          console.log('Sync appears successful, verifying with compare API...');
-        }
+      // Update timestamp regardless of final status
+      setLastSync(new Date().toLocaleString());
+
+      if (isDevelopment) {
+        // Development environment - Use synchronous sync process
+        // Send the sync data to background script
+        const response = await chrome.runtime.sendMessage({
+          type: 'SYNC_TO_NOTION',
+          data: syncData
+        });
         
-        // Update timestamp regardless of final status
-        setLastSync(new Date().toLocaleString());
+        // Store initial sync response status
+        let initialSyncStatus: 'success' | 'error' | 'partial' | null = null;
         
-        // Run compareWithNotion to check for any remaining unsynced assignments
-        try {
-          const unsyncedCount = await compareWithNotion();
-          console.log(`Compare complete. Found ${unsyncedCount} unsynced assignments.`);
-          
-          // Determine final status based on unsynced items
-          if (unsyncedCount > 0) {
-            // If we still have unsynced items, mark as partial
-            setSyncStatus('partial');
-            console.log('Setting status to partial due to remaining unsynced assignments');
-          } else {
-            // If no unsynced items, use the initial status (success or partial)
-            setSyncStatus(initialSyncStatus);
-            console.log(`Setting status to ${initialSyncStatus} as no unsynced assignments remain`);
-          }
-        } catch (compareError) {
-          console.error('Error during compare after sync:', compareError);
-          // If compare fails but sync appeared successful, still show the initial status
-          setSyncStatus(initialSyncStatus);
-        } finally {
+        // Check if the response indicates an error
+        if (response && response.error) {
+          // For error responses, update status immediately
+          initialSyncStatus = 'error';
+          setSyncStatus('error');
+          console.error('Sync error:', response.error);
           setIsLoading(false);
+        } else {
+          // For successful or partial syncs, we'll verify with compare API
+          if (response && response.partial) {
+            initialSyncStatus = 'partial';
+            console.warn('Partial sync detected, verifying with compare API...');
+          } else {
+            initialSyncStatus = 'success';
+            console.log('Sync appears successful, verifying with compare API...');
+          }
+          
+          // Run compareWithNotion to check for any remaining unsynced assignments
+          try {
+            const unsyncedCount = await compareWithNotion();
+            console.log(`Compare complete. Found ${unsyncedCount} unsynced assignments.`);
+            
+            // Determine final status based on unsynced items
+            if (unsyncedCount > 0) {
+              // If we still have unsynced items, mark as partial
+              setSyncStatus('partial');
+              console.log('Setting status to partial due to remaining unsynced assignments');
+            } else {
+              // If no unsynced items, use the initial status (success or partial)
+              setSyncStatus(initialSyncStatus);
+              console.log(`Setting status to ${initialSyncStatus} as no unsynced assignments remain`);
+            }
+          } catch (compareError) {
+            console.error('Error during compare after sync:', compareError);
+            // If compare fails but sync appeared successful, still show the initial status
+            setSyncStatus(initialSyncStatus);
+          } finally {
+            setIsLoading(false);
+          }
         }
+      } else if (isProduction) {
+        // Production environment - Use asynchronous sync process with status checking
+        // First, run a compare to determine how many assignments need to be synced
+        let assignmentCount = 0;
+        try {
+          assignmentCount = await compareWithNotion();
+          console.log(`Found ${assignmentCount} assignments that need to be synced`);
+        } catch (error) {
+          console.error('Error determining assignment count:', error);
+          // Default to 15 attempts if we can't determine the count
+          assignmentCount = 0;
+        }
+
+        // Then initiate the sync
+        const response = await chrome.runtime.sendMessage({
+          type: 'SYNC_TO_NOTION',
+          data: syncData
+        });
+
+        if (response && response.error) {
+          // Handle error response
+          setSyncStatus('error');
+          console.error('Sync error:', response.error);
+          setIsLoading(false);
+          return;
+        }
+
+        // Start checking sync status with exponential backoff
+        await checkSyncStatus(userEmail, assignmentCount);
       }
     } catch (error) {
       console.error('Sync failed:', error);
       setSyncStatus('error');
       setIsLoading(false);
+    }
+  }
+
+  // Function to check sync status with exponential backoff
+  const checkSyncStatus = async (email: string, assignmentCount: number = 0) => {
+    // Calculate appropriate max attempts based on assignment count
+    // Adjusted formula to match observed performance: 50 assignments = ~15 attempts
+    const baseAttempts = 10;
+    const assignmentFactor = Math.ceil(assignmentCount / 10); // Changed from 5 to 10
+    const calculatedAttempts = baseAttempts + assignmentFactor;
+    const maxAttempts = Math.min(Math.max(calculatedAttempts, 12), 25); // Adjusted min/max
+    
+    console.log(`Setting max polling attempts to ${maxAttempts} for ${assignmentCount} assignments`);
+    
+    let delay = 1000; // Start with 1 second delay
+    const maxDelay = 10000; // Cap at 10 seconds
+    let attempts = 0;
+
+    while (attempts < maxAttempts) {
+      try {
+        attempts++;
+        
+        // Fetch the sync status from the Netlify function
+        const encodedEmail = encodeURIComponent(email);
+        const statusUrl = `https://canvastonotion.netlify.app/.netlify/functions/notion/sync-status?email=${encodedEmail}`;
+        
+        console.log(`Checking sync status (attempt ${attempts}/${maxAttempts})...`);
+        const response = await fetch(statusUrl);
+        const data = await response.json();
+        
+        console.log('Sync status response:', data);
+        
+        if (data.success && data.syncStatus) {
+          if (data.syncStatus.status === 'complete') {
+            console.log('Sync completed successfully');
+            
+            // Run compareWithNotion to refresh unsynced items
+            try {
+              const unsyncedCount = await compareWithNotion();
+              console.log(`Compare complete. Found ${unsyncedCount} unsynced assignments.`);
+              
+              // Determine final status based on unsynced items
+              if (unsyncedCount > 0) {
+                setSyncStatus('partial');
+                console.log('Setting status to partial due to remaining unsynced assignments');
+              } else {
+                setSyncStatus('success');
+                console.log('Setting status to success as no unsynced assignments remain');
+              }
+            } catch (compareError) {
+              console.error('Error during compare after sync:', compareError);
+              setSyncStatus('success'); // Assume success if compare fails
+            }
+            
+            // Exit the polling loop
+            setIsLoading(false);
+            return;
+          } else if (data.syncStatus.status === 'error') {
+            // Handle error status
+            console.error('Sync process encountered an error');
+            setSyncStatus('error');
+            setIsLoading(false);
+            return;
+          }
+          // If status is still 'pending', continue polling
+        } else {
+          // Invalid response, stop polling
+          console.error('Invalid status response:', data);
+          setSyncStatus('error');
+          setIsLoading(false);
+          return;
+        }
+        
+        // Calculate next delay with exponential backoff
+        delay = Math.min(delay * 2, maxDelay);
+        
+        // Add a small random factor to prevent thundering herd problem
+        const jitter = Math.random() * 500;
+        const totalDelay = delay + jitter;
+        
+        // For larger assignment counts, reduce the delay slightly to speed up the process
+        const adjustedDelay = assignmentCount > 20 ? totalDelay * 0.8 : totalDelay;
+        
+        console.log(`Waiting ${Math.round(adjustedDelay)}ms before next status check`);
+        await new Promise(resolve => setTimeout(resolve, adjustedDelay));
+        
+      } catch (error) {
+        console.error('Error checking sync status:', error);
+        setSyncStatus('error');
+        setIsLoading(false);
+        return;
+      }
+    }
+    
+    // If we exceed max attempts, assume partial success
+    console.warn(`Exceeded maximum status check attempts (${maxAttempts}) for ${assignmentCount} assignments`);
+    setSyncStatus('partial');
+    setIsLoading(false);
+    
+    // Still try to refresh unsynced items
+    try {
+      await compareWithNotion();
+    } catch (error) {
+      console.error('Error comparing with Notion after max attempts:', error);
     }
   }
 
