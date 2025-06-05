@@ -2,9 +2,9 @@
 console.log('Background script initializing...');
 
 import { canvasApi } from '../services/canvas/api';
-import './auth';  // Import auth module to initialize token handling
+import { handleAuthToken, handleLogout } from '../services/firebase/config';
 
-console.log('Background script initialized, auth module imported');
+console.log('Background script initialized');
 
 // Keep service worker alive
 chrome.runtime.onStartup.addListener(() => {
@@ -186,3 +186,17 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 chrome.runtime.onInstalled.addListener(() => {
   console.log('Canvas to Notion extension installed');
 });
+
+// Listen for external messages from the web app
+chrome.runtime.onMessageExternal.addListener(
+  async (message, sender, sendResponse) => {
+    if (message.type === 'AUTH_TOKEN') {
+      const result = await handleAuthToken(message.token);
+      sendResponse(result);
+    } else if (message.type === 'LOGOUT') {
+      const result = await handleLogout();
+      sendResponse(result);
+    }
+    return true; // Keep the message channel open for async response
+  }
+);

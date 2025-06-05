@@ -1,31 +1,20 @@
-# Canvas To Notion Chrome Extension
+# Canvas to Notion Chrome Extension
 
-This Chrome extension allows you to seamlessly transfer content from Canvas to Notion. 
+A Chrome extension that allows users to sync their Canvas LMS assignments directly to Notion.
 
-## Components Overview
+## Prerequisites
 
-### Background Script
-The background script runs in the background of the Chrome browser and manages the extension's core functionality. It:
-- Handles communication between different parts of the extension
-- Manages API calls to Notion
-- Processes data from Canvas before sending to Notion
-- Runs independently of any open webpage
+- Chrome browser
+- A Notion account
+- A Canvas LMS account
+- Node.js (v18 or higher)
+- npm (v9 or higher)
 
-### Popup
-The popup is the user interface that appears when you click the extension icon in Chrome. It:
-- Provides user controls and settings
-- Shows the current status of the extension
-- Allows users to configure Notion integration
-- Acts as the frontend interface for user interaction
+## Installation
 
-## Development Setup
-
-### Installation
-
-1. Clone the repository:
+1. Clone the repository and navigate to the extension directory:
 ```bash
-git clone https://github.com/bamxo/CanvasToNotion.git
-cd CanvasToNotion
+cd CanvasToNotion-Extension
 ```
 
 2. Install dependencies:
@@ -33,49 +22,51 @@ cd CanvasToNotion
 npm install
 ```
 
-### Development Workflow
-
-1. Build the extension:
-```bash
-npm run build
-```
-This will create a `dist` folder containing the built extension files.
-
-2. Load the extension in Chrome:
+3. Load the extension in Chrome:
    - Open Chrome and navigate to `chrome://extensions/`
-   - Enable "Developer mode" in the top right corner
-   - Click "Load unpacked" in the top left
-   - Select the `dist` folder from your project directory
+   - Enable "Developer mode" in the top right
+   - Click "Load unpacked" and select the `CanvasToNotion-Extension` directory
 
-3. Making Changes:
-   - After making changes to the code, run `npm run build` again
-   - Go to the extension card in `chrome://extensions/`
-   - Click the refresh icon in the bottom right of the Canvas to Notion card
+## Development
 
-### Development Commands
+The extension is built using:
+- Manifest V3
+- TypeScript
+- Chrome Extension APIs
 
-- `npm run dev`: Start development server
-- `npm run build`: Build the extension
-- `npm run test`: Run all tests with coverage
-- `npm run test:watch`: Run tests in watch mode with coverage
-- `npm run test:ui`: Run tests with UI interface and coverage
-- `npm run test:popup`: Run tests only for popup component
-- `npm run test:content`: Run tests only for content scripts
-- `npm run test:background`: Run tests only for background scripts
-- `npm run lint`: Run linter
+### Project Structure
+- `manifest.json`: Extension configuration
+- `src/`: Source code directory
+  - `background/`: Background service worker
+  - `content/`: Content scripts for Canvas integration
+  - `popup/`: Extension popup UI
 
-## Project Structure
+### Building
 
-```
-CanvasToNotion/
-├── src/              # Source code
-│   ├── background/   # Background script
-│   ├── popup/       # Popup interface
-│   └── content/     # Content scripts
-├── public/          # Static assets
-└── dist/           # Built extension (generated)
-```
+The extension will be built automatically when loaded in Chrome's developer mode. Any changes to the source code will be reflected after reloading the extension.
+
+## Features
+
+- Sync Canvas assignments to Notion
+- Automatic authentication with Canvas LMS
+- Integration with the Canvas to Notion web application
+
+## Permissions
+
+The extension requires the following permissions:
+- `storage`: For saving user preferences and authentication data
+- `tabs`: For accessing Canvas LMS pages
+- `scripting`: For injecting content scripts
+- `identity`: For OAuth authentication
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a Pull Request
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the ISC License.
