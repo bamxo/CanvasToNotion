@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Canvas to Notion",
-  "version": "1.0",
-  "description": "Sync your Canvas assignments to Notion",
+  "version": "1.0.0",
+  "description": "Sync Canvas assignments to Notion",
   "permissions": [
     "storage",
     "tabs",
@@ -16,13 +16,14 @@
     "default_popup": "index.html"
   },
   "background": {
-    "service_worker": "src/background/auth.ts",
+    "service_worker": "src/background/index.ts",
     "type": "module"
   },
   "content_scripts": [
     {
-      "matches": ["*://*.instructure.com/*"],
-      "js": ["src/content/content.ts"]
+      "matches": ["http://localhost:5173/*"],
+      "js": ["src/content/content.js"],
+      "run_at": "document_start"
     }
   ],
   "externally_connectable": {

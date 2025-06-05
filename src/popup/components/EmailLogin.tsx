@@ -36,18 +36,6 @@ const EmailLogin: React.FC<EmailLoginProps> = ({ onBack, onLoginSuccess }) => {
     setIsLoading(true);
 
     try {
-      // Send extension ID to frontend
-      console.log('Sending extension ID to frontend:', chrome.runtime.id);
-      const tabs = await chrome.tabs.query({ url: 'http://localhost:5173/*' });
-      for (const tab of tabs) {
-        if (tab.id) {
-          await chrome.tabs.sendMessage(tab.id, { 
-            type: 'EXTENSION_ID',
-            extensionId: chrome.runtime.id 
-          });
-        }
-      }
-
       const user = await signInWithEmail(email, password);
       if (user) {
         chrome.storage.local.set({ canvasToken: user.uid });

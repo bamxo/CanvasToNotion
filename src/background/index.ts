@@ -89,84 +89,134 @@ async function syncWithNotion(courses: any[], assignments: any[], message: any) 
   }
 }
 
-// Listen for messages from the popup
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  // This ensures we can use async/await with the message handler
+// Function to send extension ID to web app
+async function sendExtensionIdToWebApp() {
+  try {
+    const tabs = await chrome.tabs.query({ url: 'http://localhost:5173/*' });
+    console.log('Found web app tabs:', tabs);
+    
+    for (const tab of tabs) {
+      if (tab.id) {
+        console.log('Injecting extension ID into tab:', tab.id);
+        await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          func: (extensionId) => {
+            console.log('Sending extension ID:', extensionId);
+            window.postMessage({ 
+              type: 'EXTENSION_ID',
+              extensionId 
+            }, '*');
+          },
+          args: [chrome.runtime.id]
+        });
+      }
+    }
+  } catch (error) {
+    console.error('Error sending extension ID:', error);
+  }
+}
+
+// Send extension ID when web app tab is updated
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (changeInfo.status === 'complete' && tab.url?.includes('localhost:5173')) {
+    console.log('Web app tab updated, sending extension ID...');
+    sendExtensionIdToWebApp();
+  }
+});
+
+// Inject message listener into web app
+async function injectMessageListener() {
+  try {
+    const tabs = await chrome.tabs.query({ url: 'http://localhost:5173/*' });
+    for (const tab of tabs) {
+      if (tab.id) {
+        await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          func: () => {
+            window.addEventListener('message', (event) => {
+              if (event.data.type === 'REQUEST_EXTENSION_ID') {
+                console.log('Web app requested extension ID');
+                window.postMessage({ 
+                  type: 'EXTENSION_ID',
+                  extensionId: chrome.runtime.id 
+                }, '*');
+              }
+            });
+          }
+        });
+      }
+    }
+  } catch (error) {
+    console.error('Error injecting message listener:', error);
+  }
+}
+
+// Inject message listener when web app tab is updated
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (changeInfo.status === 'complete' && tab.url?.includes('localhost:5173')) {
+    console.log('Web app tab updated, injecting message listener...');
+    injectMessageListener();
+  }
+});
+
+// Listen for messages from popup
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  console.log('Received message in background:', message);
+  
+  // Handle the message asynchronously
   (async () => {
     try {
-      if (message.type === 'SYNC_TO_NOTION') {
+      if (message.type === 'REQUEST_EXTENSION_ID') {
+        console.log('Popup requested extension ID, sending to web app...');
+        await sendExtensionIdToWebApp();
+        sendResponse({ success: true });
+      } else if (message.type === 'SYNC_TO_NOTION') {
         console.log('Received SYNC_TO_NOTION message:', message);
         // First fetch all necessary data
-        const courses = await canvasApi.getRecentCourses();
-        console.log('Fetched courses:', courses);
-        
-        const assignments = await canvasApi.getAllAssignments(courses);
-        console.log('Fetched assignments:', assignments);
-        
-        // Then sync with Notion
-        try {
-          const syncResult = await syncWithNotion(courses, assignments, message);
-          
-          // Return all data including sync results
+        const { canvasToken, notionToken, selectedPage } = await chrome.storage.local.get([
+          'canvasToken',
+          'notionToken',
+          'selectedPage'
+        ]);
+
+        if (!canvasToken || !notionToken || !selectedPage) {
+          console.error('Missing required tokens or page selection');
           sendResponse({ 
-            success: true, 
-            data: { 
-              courses, 
-              assignments,
-              syncResult
-            } 
+            success: false, 
+            error: 'Missing required tokens or page selection' 
           });
-        } catch (error: any) {
-          console.error('Sync encountered an issue:', error);
-          // Only treat it as an error if the sync actually failed
-          const syncError = error instanceof Error ? error : new Error(String(error));
-          const isActualError = syncError.message.includes('failed') || 
-                              syncError.message.includes('error');
-          
-          sendResponse({ 
-            success: !isActualError,
-            data: { courses, assignments },
-            syncWarning: isActualError ? undefined : syncError.message,
-            syncError: isActualError ? syncError.message : undefined
-          });
+          return;
         }
-      } else if (message.action === 'fetchAll') {
-        console.log('Fetching all Canvas data...');
-        // First fetch all necessary data
-        const courses = await canvasApi.getRecentCourses();
-        console.log('Fetched courses:', courses);
-        
-        const assignments = await canvasApi.getAllAssignments(courses);
-        console.log('Fetched assignments:', assignments);
-        
-        // Then sync with Notion
-        try {
-          const syncResult = await syncWithNotion(courses, assignments, message);
-          
-          // Return all data including sync results
+
+        // Validate the payload
+        if (!message.payload || typeof message.payload !== 'object') {
+          console.error('Invalid payload format');
           sendResponse({ 
-            success: true, 
-            data: { 
-              courses, 
-              assignments,
-              syncResult
-            } 
+            success: false, 
+            error: 'Invalid payload format' 
           });
-        } catch (error: any) {
-          console.error('Sync encountered an issue:', error);
-          // Only treat it as an error if the sync actually failed
-          const syncError = error instanceof Error ? error : new Error(String(error));
-          const isActualError = syncError.message.includes('failed') || 
-                              syncError.message.includes('error');
-          
-          sendResponse({ 
-            success: !isActualError,
-            data: { courses, assignments },
-            syncWarning: isActualError ? undefined : syncError.message,
-            syncError: isActualError ? syncError.message : undefined
-          });
+          return;
         }
+
+        // Send to server
+        const response = await fetch('http://localhost:3000/api/sync', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            canvasToken,
+            notionToken,
+            selectedPage,
+            payload: message.payload
+          }),
+        });
+
+        const data = await response.json();
+        console.log('Server response:', data);
+        sendResponse(data);
       } else {
+        console.error('Unknown action:', message.type);
         sendResponse({ success: false, error: 'Unknown action' });
       }
     } catch (error) {

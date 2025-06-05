@@ -78,14 +78,19 @@ export const getUser = () => {
 // Background auth functions
 export const handleAuthToken = async (token: string): Promise<{ success: boolean; error?: string }> => {
   try {
+    console.log('Handling auth token in extension...');
+    
     // Store the token securely
     await chrome.storage.local.set({ 
       firebaseToken: token,
       tokenTimestamp: Date.now()
     });
+    console.log('Stored token in chrome.storage.local');
 
     // Sign in with the custom token
+    console.log('Signing in with custom token...');
     const userCredential = await signInWithCustomToken(token);
+    console.log('Successfully signed in with custom token');
 
     // Store user info
     await chrome.storage.local.set({
@@ -93,9 +98,12 @@ export const handleAuthToken = async (token: string): Promise<{ success: boolean
       userId: userCredential.user.uid,
       canvasToken: userCredential.user.uid
     });
+    console.log('Stored user info in chrome.storage.local');
 
     // Notify the popup about successful authentication
+    console.log('Sending LOGIN_SUCCESS message to popup...');
     chrome.runtime.sendMessage({ type: 'LOGIN_SUCCESS' });
+    console.log('Successfully sent LOGIN_SUCCESS message');
 
     return { success: true };
   } catch (error: any) {
