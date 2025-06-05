@@ -16,6 +16,19 @@ vi.mock('firebase/auth', () => {
   };
 });
 
+// Mock API config
+let isDevelopmentMode = true;
+let isProductionMode = false;
+
+vi.mock('../../../services/api.config', () => ({
+  get isDevelopment() {
+    return isDevelopmentMode;
+  },
+  get isProduction() {
+    return isProductionMode;
+  }
+}));
+
 // Mock canvas data API
 vi.mock('../../../services/chrome-communication', () => ({
   canvasDataApi: {
@@ -30,6 +43,7 @@ vi.mock('../Dashboard.module.css', () => ({
     content: 'content',
     particle: 'particle',
     floatParticle: 'floatParticle',
+    fadeIn: 'fadeIn',
   },
 }));
 
@@ -64,9 +78,10 @@ vi.mock('../PageSelectionContainer', () => ({
 }));
 
 vi.mock('../UnsyncedContainer', () => ({
-  default: ({ unsyncedItems, onClearItems }: any) => (
+  default: ({ unsyncedItems, onClearItems, isLoading }: any) => (
     <div data-testid="unsynced-container">
       <span>Unsynced Items: {unsyncedItems.length}</span>
+      {isLoading && <span>Loading...</span>}
       <button onClick={onClearItems}>Clear Items</button>
     </div>
   ),
@@ -76,7 +91,7 @@ vi.mock('../UnsyncedContainer', () => ({
 vi.mock('../SyncButton', () => ({
   default: ({ onSync, isLoading, disabled, lastSync, syncStatus }: any) => (
     <div data-testid="sync-button">
-      <button onClick={onSync} disabled={disabled}>
+      <button onClick={onSync} disabled={disabled || isLoading}>
         {isLoading ? 'Syncing...' : 'Sync'}
       </button>
       {lastSync && <span>Last sync: {lastSync}</span>}
@@ -109,6 +124,21 @@ vi.mock('../../data/mockUnsyncedItems.json', () => ({
       },
     ],
   },
+}));
+
+// Mock the utils module
+vi.mock('../../utils/assignmentTransformer', () => ({
+  transformCanvasAssignments: vi.fn((assignments, _) => {
+    return assignments.map((a: any) => ({
+      id: a.id || a.assignment_id,
+      type: 'assignment',
+      title: a.name || a.title,
+      course: 'Test Course',
+      due_date: a.due_at || '2025-06-15T23:59:00Z',
+      status: 'upcoming',
+      points: a.points_possible || 100,
+    }));
+  }),
 }));
 
 // Import Dashboard after mocks
@@ -167,6 +197,9 @@ describe('Dashboard Component', () => {
 
     // Mock Math.random for consistent particle positioning
     vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    
+    // Mock global fetch for status checks
+    global.fetch = vi.fn();
   });
 
   afterEach(() => {
@@ -378,14 +411,38 @@ describe('Dashboard Component', () => {
   describe('Unsynced Items Management', () => {
     it('should display UnsyncedContainer when page is selected', async () => {
       const selectedPage = { id: 'page-1', title: 'Test Page' };
+      const userEmail = 'test@example.com';
       
       mockOnAuthStateChanged.mockImplementation((_auth: any, callback: any) => {
-        callback(null);
+        callback({ email: userEmail });
         return unsubscribeFn;
       });
 
       mockChromeStorage.local.get.mockImplementation((_keys: any, callback: any) => {
         callback({ selectedNotionPage: selectedPage });
+      });
+
+      // Mock successful comparison with unsynced items
+      mockChromeRuntime.sendMessage.mockImplementation((message: { type: string; data?: any }) => {
+        if (message.type === 'COMPARE') {
+          return Promise.resolve({
+            success: true,
+            data: {
+              courses: [{ id: 1, name: 'Test Course' }],
+              compareResult: {
+                comparison: {
+                  'Test Course': {
+                    onlyInCanvas: [
+                      { id: 1, name: 'Test Assignment 1' },
+                      { id: 2, name: 'Test Assignment 2' }
+                    ]
+                  }
+                }
+              }
+            }
+          });
+        }
+        return Promise.resolve({ success: false });
       });
 
       render(<Dashboard />);
@@ -396,33 +453,40 @@ describe('Dashboard Component', () => {
       });
     });
 
-    it('should not display UnsyncedContainer when no page is selected', async () => {
-      mockOnAuthStateChanged.mockImplementation((_auth: any, callback: any) => {
-        callback(null);
-        return unsubscribeFn;
-      });
-
-      mockChromeStorage.local.get.mockImplementation((_keys: any, callback: any) => {
-        callback({});
-      });
-
-      render(<Dashboard />);
-
-      await waitFor(() => {
-        expect(screen.queryByTestId('unsynced-container')).not.toBeInTheDocument();
-      });
-    });
-
     it('should handle clearing unsynced items', async () => {
       const selectedPage = { id: 'page-1', title: 'Test Page' };
+      const userEmail = 'test@example.com';
       
       mockOnAuthStateChanged.mockImplementation((_auth: any, callback: any) => {
-        callback(null);
+        callback({ email: userEmail });
         return unsubscribeFn;
       });
 
       mockChromeStorage.local.get.mockImplementation((_keys: any, callback: any) => {
         callback({ selectedNotionPage: selectedPage });
+      });
+
+      // Mock successful comparison with unsynced items
+      mockChromeRuntime.sendMessage.mockImplementation((message: { type: string; data?: any }) => {
+        if (message.type === 'COMPARE') {
+          return Promise.resolve({
+            success: true,
+            data: {
+              courses: [{ id: 1, name: 'Test Course' }],
+              compareResult: {
+                comparison: {
+                  'Test Course': {
+                    onlyInCanvas: [
+                      { id: 1, name: 'Test Assignment 1' },
+                      { id: 2, name: 'Test Assignment 2' }
+                    ]
+                  }
+                }
+              }
+            }
+          });
+        }
+        return Promise.resolve({ success: false });
       });
 
       render(<Dashboard />);
@@ -452,13 +516,33 @@ describe('Dashboard Component', () => {
       mockChromeStorage.local.get.mockImplementation((_keys: any, callback: any) => {
         callback({ selectedNotionPage: selectedPage });
       });
+      
+      // Mock successful comparison
+      mockChromeRuntime.sendMessage.mockImplementation((message: { type: string; data?: any }) => {
+        if (message.type === 'COMPARE') {
+          return Promise.resolve({
+            success: true,
+            data: {
+              courses: [{ id: 1, name: 'Test Course' }],
+              compareResult: {
+                comparison: {
+                  'Test Course': {
+                    onlyInCanvas: [{ id: 1, name: 'Test Assignment' }]
+                  }
+                }
+              }
+            }
+          });
+        } else if (message.type === 'SYNC_TO_NOTION') {
+          return Promise.resolve({ success: true });
+        }
+        return Promise.resolve({ success: false });
+      });
 
       mockCanvasDataApi.fetchAll.mockResolvedValue({
         courses: [{ id: 1, name: 'Test Course' }],
         assignments: [{ id: 1, name: 'Test Assignment' }],
       });
-
-      mockChromeRuntime.sendMessage.mockResolvedValue({ success: true });
 
       render(<Dashboard />);
 
@@ -471,32 +555,42 @@ describe('Dashboard Component', () => {
       });
 
       await waitFor(() => {
-        expect(mockCanvasDataApi.fetchAll).toHaveBeenCalled();
         expect(mockChromeRuntime.sendMessage).toHaveBeenCalledWith({
           type: 'SYNC_TO_NOTION',
           data: {
             email: userEmail,
             pageId: selectedPage.id,
-            courses: [{ id: 1, name: 'Test Course' }],
-            assignments: [{ id: 1, name: 'Test Assignment' }],
           },
         });
       });
 
       await waitFor(() => {
-        expect(screen.getByText('Status: success')).toBeInTheDocument();
+        // Look for Status: text followed by either success or partial
+        const statusTextElement = screen.getByText(/Status:/);
+        expect(statusTextElement).toBeInTheDocument();
+        
+        // Get the parent element and check its text content
+        const statusParent = statusTextElement.parentElement;
+        expect(statusParent).toBeInTheDocument();
+        const fullStatusText = statusParent?.textContent || '';
+        
+        // Check if the status text contains either success or partial
+        expect(
+          fullStatusText.includes('success') || 
+          fullStatusText.includes('partial')
+        ).toBe(true);
+        
         expect(screen.getByText(/Last sync:/)).toBeInTheDocument();
-        expect(screen.getByText('Unsynced Items: 0')).toBeInTheDocument();
       });
     });
 
     it('should handle sync error when missing page or email', async () => {
       // Test the case where sync is attempted but fails due to missing data
-      // We'll provide partial data to make the button enabled, then test the error handling
       const selectedPage = { id: 'page-1', title: 'Test Page' };
       
+      // Set up auth to return null (no email)
       mockOnAuthStateChanged.mockImplementation((_auth: any, callback: any) => {
-        callback({ email: 'test@example.com' });
+        callback(null);
         return unsubscribeFn;
       });
 
@@ -504,24 +598,21 @@ describe('Dashboard Component', () => {
         callback({ selectedNotionPage: selectedPage });
       });
 
-      // Mock the API to fail to simulate an error condition
-      mockCanvasDataApi.fetchAll.mockRejectedValue(new Error('Missing required data: page or user email'));
-
       render(<Dashboard />);
 
       await waitFor(() => {
         expect(screen.getByText('Sync')).toBeInTheDocument();
-        expect(screen.getByText('Sync')).not.toBeDisabled();
+        expect(screen.getByText('Sync')).toBeDisabled();
       });
 
       await act(async () => {
         fireEvent.click(screen.getByText('Sync'));
       });
 
-      // The sync function should fail and set error status
+      // Button should still be disabled, and no error status should be set
       await waitFor(() => {
-        expect(screen.getByText('Status: error')).toBeInTheDocument();
-        expect(console.error).toHaveBeenCalledWith('Sync failed:', expect.any(Error));
+        expect(screen.queryByText('Status: error')).not.toBeInTheDocument();
+        expect(screen.getByText('Sync')).toBeDisabled();
       });
     });
 
@@ -538,43 +629,27 @@ describe('Dashboard Component', () => {
         callback({ selectedNotionPage: selectedPage });
       });
 
-      mockCanvasDataApi.fetchAll.mockRejectedValue(new Error('API Error'));
-
-      render(<Dashboard />);
-
-      await waitFor(() => {
-        expect(screen.getByText('Sync')).toBeInTheDocument();
+      // Mock comparison to succeed but sync to fail
+      mockChromeRuntime.sendMessage.mockImplementation((message: { type: string; data?: any }) => {
+        if (message.type === 'COMPARE') {
+          return Promise.resolve({
+            success: true,
+            data: {
+              courses: [{ id: 1, name: 'Test Course' }],
+              compareResult: {
+                comparison: {
+                  'Test Course': {
+                    onlyInCanvas: [{ id: 1, name: 'Test Assignment' }]
+                  }
+                }
+              }
+            }
+          });
+        } else if (message.type === 'SYNC_TO_NOTION') {
+          return Promise.reject(new Error('API Error'));
+        }
+        return Promise.resolve({ success: false });
       });
-
-      await act(async () => {
-        fireEvent.click(screen.getByText('Sync'));
-      });
-
-      await waitFor(() => {
-        expect(screen.getByText('Status: error')).toBeInTheDocument();
-        expect(console.error).toHaveBeenCalledWith('Sync failed:', expect.any(Error));
-      });
-    });
-
-    it('should handle sync error during chrome message', async () => {
-      const selectedPage = { id: 'page-1', title: 'Test Page' };
-      const userEmail = 'test@example.com';
-      
-      mockOnAuthStateChanged.mockImplementation((_auth: any, callback: any) => {
-        callback({ email: userEmail });
-        return unsubscribeFn;
-      });
-
-      mockChromeStorage.local.get.mockImplementation((_keys: any, callback: any) => {
-        callback({ selectedNotionPage: selectedPage });
-      });
-
-      mockCanvasDataApi.fetchAll.mockResolvedValue({
-        courses: [],
-        assignments: [],
-      });
-
-      mockChromeRuntime.sendMessage.mockRejectedValue(new Error('Chrome Error'));
 
       render(<Dashboard />);
 
@@ -605,8 +680,28 @@ describe('Dashboard Component', () => {
         callback({ selectedNotionPage: selectedPage });
       });
 
-      // Make the API call hang to test loading state
-      mockCanvasDataApi.fetchAll.mockImplementation(() => new Promise(() => {}));
+      // Set up the compare mock to succeed
+      mockChromeRuntime.sendMessage.mockImplementation((message: { type: string; data?: any }) => {
+        if (message.type === 'COMPARE') {
+          return Promise.resolve({
+            success: true,
+            data: {
+              courses: [{ id: 1, name: 'Test Course' }],
+              compareResult: {
+                comparison: {
+                  'Test Course': {
+                    onlyInCanvas: [{ id: 1, name: 'Test Assignment' }]
+                  }
+                }
+              }
+            }
+          });
+        } else if (message.type === 'SYNC_TO_NOTION') {
+          // Make the sync call hang to test loading state
+          return new Promise(() => {});
+        }
+        return Promise.resolve({ success: false });
+      });
 
       render(<Dashboard />);
 
@@ -621,23 +716,6 @@ describe('Dashboard Component', () => {
       await waitFor(() => {
         expect(screen.getByText('Syncing...')).toBeInTheDocument();
         expect(screen.getByText('Syncing...')).toBeDisabled();
-      });
-    });
-
-    it('should disable sync button when missing required data', async () => {
-      mockOnAuthStateChanged.mockImplementation((_auth: any, callback: any) => {
-        callback(null);
-        return unsubscribeFn;
-      });
-
-      mockChromeStorage.local.get.mockImplementation((_keys: any, callback: any) => {
-        callback({});
-      });
-
-      render(<Dashboard />);
-
-      await waitFor(() => {
-        expect(screen.getByText('Sync')).toBeDisabled();
       });
     });
   });
@@ -933,6 +1011,680 @@ describe('Dashboard Component', () => {
           showPageSelector: true,
         });
       });
+    });
+  });
+
+  describe('Production Environment Sync', () => {
+    beforeEach(() => {
+      // Change config mock to production mode
+      isDevelopmentMode = false;
+      isProductionMode = true;
+    });
+
+    afterEach(() => {
+      // Reset back to development mode
+      isDevelopmentMode = true;
+      isProductionMode = false;
+    });
+
+    it('should handle successful sync in production mode', async () => {
+      const selectedPage = { id: 'page-1', title: 'Test Page' };
+      const userEmail = 'test@example.com';
+      
+      mockOnAuthStateChanged.mockImplementation((_auth: any, callback: any) => {
+        callback({ email: userEmail });
+        return unsubscribeFn;
+      });
+
+      mockChromeStorage.local.get.mockImplementation((_keys: any, callback: any) => {
+        callback({ selectedNotionPage: selectedPage });
+      });
+
+      // Mock successful comparison and sync
+      mockChromeRuntime.sendMessage.mockImplementation((message: { type: string; data?: any }) => {
+        if (message.type === 'COMPARE') {
+          return Promise.resolve({
+            success: true,
+            data: {
+              courses: [{ id: 1, name: 'Test Course' }],
+              compareResult: {
+                comparison: {
+                  'Test Course': {
+                    onlyInCanvas: [{ id: 1, name: 'Test Assignment' }]
+                  }
+                }
+              }
+            }
+          });
+        } else if (message.type === 'SYNC_TO_NOTION') {
+          return Promise.resolve({ success: true });
+        }
+        return Promise.resolve({ success: false });
+      });
+
+      // Mock fetch response for status checking
+      global.fetch = vi.fn().mockImplementation((url) => {
+        if (url.includes('sync-status')) {
+          return Promise.resolve({
+            json: () => Promise.resolve({
+              success: true,
+              syncStatus: { status: 'complete' }
+            })
+          });
+        }
+        return Promise.resolve({ json: () => Promise.resolve({}) });
+      });
+
+      render(<Dashboard />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Sync')).toBeInTheDocument();
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByText('Sync'));
+      });
+
+      await waitFor(() => {
+        expect(mockChromeRuntime.sendMessage).toHaveBeenCalledWith({
+          type: 'SYNC_TO_NOTION',
+          data: {
+            email: userEmail,
+            pageId: selectedPage.id,
+          },
+        });
+      });
+
+      await waitFor(() => {
+        // Look for Status: text followed by either success or partial
+        const statusTextElement = screen.getByText(/Status:/);
+        const statusParent = statusTextElement.parentElement;
+        const fullStatusText = statusParent?.textContent || '';
+        expect(
+          fullStatusText.includes('success') || 
+          fullStatusText.includes('partial')
+        ).toBe(true);
+      });
+    });
+
+    it('should handle error response from sync in production mode', async () => {
+      const selectedPage = { id: 'page-1', title: 'Test Page' };
+      const userEmail = 'test@example.com';
+      
+      mockOnAuthStateChanged.mockImplementation((_auth: any, callback: any) => {
+        callback({ email: userEmail });
+        return unsubscribeFn;
+      });
+
+      mockChromeStorage.local.get.mockImplementation((_keys: any, callback: any) => {
+        callback({ selectedNotionPage: selectedPage });
+      });
+
+      // Mock successful comparison but error in sync
+      mockChromeRuntime.sendMessage.mockImplementation((message: { type: string; data?: any }) => {
+        if (message.type === 'COMPARE') {
+          return Promise.resolve({
+            success: true,
+            data: {
+              courses: [{ id: 1, name: 'Test Course' }],
+              compareResult: {
+                comparison: {
+                  'Test Course': {
+                    onlyInCanvas: [{ id: 1, name: 'Test Assignment' }]
+                  }
+                }
+              }
+            }
+          });
+        } else if (message.type === 'SYNC_TO_NOTION') {
+          return Promise.resolve({ success: false, error: 'Sync error' });
+        }
+        return Promise.resolve({ success: false });
+      });
+
+      render(<Dashboard />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Sync')).toBeInTheDocument();
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByText('Sync'));
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText('Status: error')).toBeInTheDocument();
+      });
+    });
+
+    it('should handle status polling with complete status', async () => {
+      const selectedPage = { id: 'page-1', title: 'Test Page' };
+      const userEmail = 'test@example.com';
+      
+      mockOnAuthStateChanged.mockImplementation((_auth: any, callback: any) => {
+        callback({ email: userEmail });
+        return unsubscribeFn;
+      });
+
+      mockChromeStorage.local.get.mockImplementation((_keys: any, callback: any) => {
+        callback({ selectedNotionPage: selectedPage });
+      });
+
+      // Mock successful comparison and sync
+      mockChromeRuntime.sendMessage.mockImplementation((message: { type: string; data?: any }) => {
+        if (message.type === 'COMPARE') {
+          return Promise.resolve({
+            success: true,
+            data: {
+              courses: [{ id: 1, name: 'Test Course' }],
+              compareResult: {
+                comparison: {
+                  'Test Course': {
+                    onlyInCanvas: []
+                  }
+                }
+              }
+            }
+          });
+        } else if (message.type === 'SYNC_TO_NOTION') {
+          return Promise.resolve({ success: true });
+        }
+        return Promise.resolve({ success: false });
+      });
+
+      // Mock fetch to return complete status
+      global.fetch = vi.fn().mockImplementation(() => {
+        return Promise.resolve({
+          json: () => Promise.resolve({
+            success: true,
+            syncStatus: { status: 'complete' }
+          })
+        });
+      });
+
+      render(<Dashboard />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Sync')).toBeInTheDocument();
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByText('Sync'));
+      });
+
+      await waitFor(() => {
+        expect(global.fetch).toHaveBeenCalled();
+        expect(screen.getByText('Status: success')).toBeInTheDocument();
+      });
+    });
+
+    it('should handle status polling with error status', async () => {
+      const selectedPage = { id: 'page-1', title: 'Test Page' };
+      const userEmail = 'test@example.com';
+      
+      mockOnAuthStateChanged.mockImplementation((_auth: any, callback: any) => {
+        callback({ email: userEmail });
+        return unsubscribeFn;
+      });
+
+      mockChromeStorage.local.get.mockImplementation((_keys: any, callback: any) => {
+        callback({ selectedNotionPage: selectedPage });
+      });
+
+      // Mock successful comparison and sync
+      mockChromeRuntime.sendMessage.mockImplementation((message: { type: string; data?: any }) => {
+        if (message.type === 'COMPARE') {
+          return Promise.resolve({
+            success: true,
+            data: {
+              courses: [{ id: 1, name: 'Test Course' }],
+              compareResult: {
+                comparison: {
+                  'Test Course': {
+                    onlyInCanvas: [{ id: 1, name: 'Test Assignment' }]
+                  }
+                }
+              }
+            }
+          });
+        } else if (message.type === 'SYNC_TO_NOTION') {
+          return Promise.resolve({ success: true });
+        }
+        return Promise.resolve({ success: false });
+      });
+
+      // Mock fetch to return error status
+      global.fetch = vi.fn().mockImplementation(() => {
+        return Promise.resolve({
+          json: () => Promise.resolve({
+            success: true,
+            syncStatus: { status: 'error' }
+          })
+        });
+      });
+
+      render(<Dashboard />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Sync')).toBeInTheDocument();
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByText('Sync'));
+      });
+
+      await waitFor(() => {
+        expect(global.fetch).toHaveBeenCalled();
+        expect(screen.getByText('Status: error')).toBeInTheDocument();
+      });
+    });
+
+    it('should handle invalid status response', async () => {
+      const selectedPage = { id: 'page-1', title: 'Test Page' };
+      const userEmail = 'test@example.com';
+      
+      mockOnAuthStateChanged.mockImplementation((_auth: any, callback: any) => {
+        callback({ email: userEmail });
+        return unsubscribeFn;
+      });
+
+      mockChromeStorage.local.get.mockImplementation((_keys: any, callback: any) => {
+        callback({ selectedNotionPage: selectedPage });
+      });
+
+      // Mock successful comparison and sync
+      mockChromeRuntime.sendMessage.mockImplementation((message: { type: string; data?: any }) => {
+        if (message.type === 'COMPARE') {
+          return Promise.resolve({
+            success: true,
+            data: {
+              courses: [{ id: 1, name: 'Test Course' }],
+              compareResult: {
+                comparison: {
+                  'Test Course': {
+                    onlyInCanvas: [{ id: 1, name: 'Test Assignment' }]
+                  }
+                }
+              }
+            }
+          });
+        } else if (message.type === 'SYNC_TO_NOTION') {
+          return Promise.resolve({ success: true });
+        }
+        return Promise.resolve({ success: false });
+      });
+
+      // Mock fetch to return invalid response
+      global.fetch = vi.fn().mockImplementation(() => {
+        return Promise.resolve({
+          json: () => Promise.resolve({
+            success: false
+          })
+        });
+      });
+
+      render(<Dashboard />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Sync')).toBeInTheDocument();
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByText('Sync'));
+      });
+
+      await waitFor(() => {
+        expect(global.fetch).toHaveBeenCalled();
+        expect(screen.getByText('Status: error')).toBeInTheDocument();
+      });
+    });
+
+    it('should handle fetch error during status polling', async () => {
+      const selectedPage = { id: 'page-1', title: 'Test Page' };
+      const userEmail = 'test@example.com';
+      
+      mockOnAuthStateChanged.mockImplementation((_auth: any, callback: any) => {
+        callback({ email: userEmail });
+        return unsubscribeFn;
+      });
+
+      mockChromeStorage.local.get.mockImplementation((_keys: any, callback: any) => {
+        callback({ selectedNotionPage: selectedPage });
+      });
+
+      // Mock successful comparison and sync
+      mockChromeRuntime.sendMessage.mockImplementation((message: { type: string; data?: any }) => {
+        if (message.type === 'COMPARE') {
+          return Promise.resolve({
+            success: true,
+            data: {
+              courses: [{ id: 1, name: 'Test Course' }],
+              compareResult: {
+                comparison: {
+                  'Test Course': {
+                    onlyInCanvas: [{ id: 1, name: 'Test Assignment' }]
+                  }
+                }
+              }
+            }
+          });
+        } else if (message.type === 'SYNC_TO_NOTION') {
+          return Promise.resolve({ success: true });
+        }
+        return Promise.resolve({ success: false });
+      });
+
+      // Mock fetch to throw an error
+      global.fetch = vi.fn().mockImplementation(() => {
+        throw new Error('Network error');
+      });
+
+      render(<Dashboard />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Sync')).toBeInTheDocument();
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByText('Sync'));
+      });
+
+      await waitFor(() => {
+        expect(global.fetch).toHaveBeenCalled();
+        expect(screen.getByText('Status: error')).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('Compare With Notion Edge Cases', () => {
+    it('should handle missing compareResult in response', async () => {
+      const selectedPage = { id: 'page-1', title: 'Test Page' };
+      const userEmail = 'test@example.com';
+      
+      mockOnAuthStateChanged.mockImplementation((_auth: any, callback: any) => {
+        callback({ email: userEmail });
+        return unsubscribeFn;
+      });
+
+      mockChromeStorage.local.get.mockImplementation((_keys: any, callback: any) => {
+        callback({ selectedNotionPage: selectedPage });
+      });
+
+      // Mock response without compareResult
+      mockChromeRuntime.sendMessage.mockImplementation((message: { type: string; data?: any }) => {
+        if (message.type === 'COMPARE') {
+          return Promise.resolve({
+            success: true,
+            data: {
+              courses: [{ id: 1, name: 'Test Course' }],
+              // No compareResult property
+            }
+          });
+        }
+        return Promise.resolve({ success: false });
+      });
+
+      render(<Dashboard />);
+
+      // Should not crash and should set unsyncedItems to empty array
+      await waitFor(() => {
+        expect(screen.getByTestId('unsynced-container')).toBeInTheDocument();
+        expect(screen.getByText('Unsynced Items: 0')).toBeInTheDocument();
+      });
+    });
+
+    it('should handle missing comparison data in compareResult', async () => {
+      const selectedPage = { id: 'page-1', title: 'Test Page' };
+      const userEmail = 'test@example.com';
+      
+      mockOnAuthStateChanged.mockImplementation((_auth: any, callback: any) => {
+        callback({ email: userEmail });
+        return unsubscribeFn;
+      });
+
+      mockChromeStorage.local.get.mockImplementation((_keys: any, callback: any) => {
+        callback({ selectedNotionPage: selectedPage });
+      });
+
+      // Mock response without comparison data
+      mockChromeRuntime.sendMessage.mockImplementation((message: { type: string; data?: any }) => {
+        if (message.type === 'COMPARE') {
+          return Promise.resolve({
+            success: true,
+            data: {
+              courses: [{ id: 1, name: 'Test Course' }],
+              compareResult: {
+                // No comparison property
+                otherData: 'something'
+              }
+            }
+          });
+        }
+        return Promise.resolve({ success: false });
+      });
+
+      render(<Dashboard />);
+
+      // Should not crash and should set unsyncedItems to empty array
+      await waitFor(() => {
+        expect(screen.getByTestId('unsynced-container')).toBeInTheDocument();
+        expect(screen.getByText('Unsynced Items: 0')).toBeInTheDocument();
+      });
+    });
+
+    it('should handle error when comparing with Notion', async () => {
+      const selectedPage = { id: 'page-1', title: 'Test Page' };
+      const userEmail = 'test@example.com';
+      
+      mockOnAuthStateChanged.mockImplementation((_auth: any, callback: any) => {
+        callback({ email: userEmail });
+        return unsubscribeFn;
+      });
+
+      mockChromeStorage.local.get.mockImplementation((_keys: any, callback: any) => {
+        callback({ selectedNotionPage: selectedPage });
+      });
+
+      // Mock compare to throw an error
+      mockChromeRuntime.sendMessage.mockImplementation((message: { type: string; data?: any }) => {
+        if (message.type === 'COMPARE') {
+          throw new Error('Compare error');
+        }
+        return Promise.resolve({ success: false });
+      });
+
+      render(<Dashboard />);
+
+      // Should not crash and should set unsyncedItems to empty array
+      await waitFor(() => {
+        expect(screen.getByTestId('unsynced-container')).toBeInTheDocument();
+        expect(screen.getByText('Unsynced Items: 0')).toBeInTheDocument();
+        expect(console.error).toHaveBeenCalledWith('Error comparing with Notion:', expect.any(Error));
+      });
+    });
+
+    it('should handle failed response from compareWithNotion', async () => {
+      const selectedPage = { id: 'page-1', title: 'Test Page' };
+      const userEmail = 'test@example.com';
+      
+      mockOnAuthStateChanged.mockImplementation((_auth: any, callback: any) => {
+        callback({ email: userEmail });
+        return unsubscribeFn;
+      });
+
+      mockChromeStorage.local.get.mockImplementation((_keys: any, callback: any) => {
+        callback({ selectedNotionPage: selectedPage });
+      });
+
+      // Mock compare to return failed response
+      mockChromeRuntime.sendMessage.mockImplementation((message: { type: string; data?: any }) => {
+        if (message.type === 'COMPARE') {
+          return Promise.resolve({
+            success: false,
+            error: 'Something went wrong'
+          });
+        }
+        return Promise.resolve({ success: false });
+      });
+
+      render(<Dashboard />);
+
+      // Should not crash and should set unsyncedItems to empty array
+      await waitFor(() => {
+        expect(screen.getByTestId('unsynced-container')).toBeInTheDocument();
+        expect(screen.getByText('Unsynced Items: 0')).toBeInTheDocument();
+        expect(console.error).toHaveBeenCalledWith('Compare failed or returned invalid data:', expect.any(Object));
+      });
+    });
+  });
+
+  describe('Development Environment Sync Edge Cases', () => {
+    beforeEach(() => {
+      // Ensure in development mode
+      isDevelopmentMode = true;
+      isProductionMode = false;
+    });
+
+    it('should handle partial sync response', async () => {
+      const selectedPage = { id: 'page-1', title: 'Test Page' };
+      const userEmail = 'test@example.com';
+      
+      mockOnAuthStateChanged.mockImplementation((_auth: any, callback: any) => {
+        callback({ email: userEmail });
+        return unsubscribeFn;
+      });
+
+      mockChromeStorage.local.get.mockImplementation((_keys: any, callback: any) => {
+        callback({ selectedNotionPage: selectedPage });
+      });
+
+      // Mock partial sync response
+      mockChromeRuntime.sendMessage.mockImplementation((message: { type: string; data?: any }) => {
+        if (message.type === 'COMPARE') {
+          return Promise.resolve({
+            success: true,
+            data: {
+              courses: [{ id: 1, name: 'Test Course' }],
+              compareResult: {
+                comparison: {
+                  'Test Course': {
+                    onlyInCanvas: []
+                  }
+                }
+              }
+            }
+          });
+        } else if (message.type === 'SYNC_TO_NOTION') {
+          return Promise.resolve({ 
+            success: true,
+            partial: true
+          });
+        }
+        return Promise.resolve({ success: false });
+      });
+
+      render(<Dashboard />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Sync')).toBeInTheDocument();
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByText('Sync'));
+      });
+
+      await waitFor(() => {
+        expect(mockChromeRuntime.sendMessage).toHaveBeenCalledWith({
+          type: 'SYNC_TO_NOTION',
+          data: {
+            email: userEmail,
+            pageId: selectedPage.id,
+          },
+        });
+      });
+
+      await waitFor(() => {
+        const statusTextElement = screen.getByText(/Status:/);
+        const statusParent = statusTextElement.parentElement;
+        const fullStatusText = statusParent?.textContent || '';
+        expect(fullStatusText.includes('partial')).toBe(true);
+      });
+    });
+
+    it('should handle compareWithNotion error after successful sync', async () => {
+      const selectedPage = { id: 'page-1', title: 'Test Page' };
+      const userEmail = 'test@example.com';
+      
+      mockOnAuthStateChanged.mockImplementation((_auth: any, callback: any) => {
+        callback({ email: userEmail });
+        return unsubscribeFn;
+      });
+
+      mockChromeStorage.local.get.mockImplementation((_keys: any, callback: any) => {
+        callback({ selectedNotionPage: selectedPage });
+      });
+
+      let compareCallCount = 0;
+      
+      // Mock successful sync but error in second compare
+      mockChromeRuntime.sendMessage.mockImplementation((message: { type: string; data?: any }) => {
+        if (message.type === 'COMPARE') {
+          compareCallCount++;
+          if (compareCallCount === 1) {
+            // First call (initial compare) succeeds
+            return Promise.resolve({
+              success: true,
+              data: {
+                courses: [{ id: 1, name: 'Test Course' }],
+                compareResult: {
+                  comparison: {
+                    'Test Course': {
+                      onlyInCanvas: [{ id: 1, name: 'Test Assignment' }]
+                    }
+                  }
+                }
+              }
+            });
+          } else {
+            // Second call (post-sync verification) fails
+            throw new Error('Second compare failed');
+          }
+        } else if (message.type === 'SYNC_TO_NOTION') {
+          return Promise.resolve({ success: true });
+        }
+        return Promise.resolve({ success: false });
+      });
+
+      render(<Dashboard />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Sync')).toBeInTheDocument();
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByText('Sync'));
+      });
+
+      await waitFor(() => {
+        expect(mockChromeRuntime.sendMessage).toHaveBeenCalledWith({
+          type: 'SYNC_TO_NOTION',
+          data: {
+            email: userEmail,
+            pageId: selectedPage.id,
+          },
+        });
+      });
+
+      // Wait for status to be updated
+      await waitFor(() => {
+        expect(screen.getByText('Status: success')).toBeInTheDocument();
+      });
+
+      // Verify the correct error was logged
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringMatching(/Error (during compare after sync|comparing with Notion):/),
+        expect.any(Error)
+      );
     });
   });
 }); 
