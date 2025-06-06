@@ -243,7 +243,10 @@ describe('Dashboard Component', () => {
 
   describe('Authentication State Management', () => {
     it('should handle authenticated user from Firebase auth', async () => {
-      const mockUser = { email: 'test@example.com' };
+      const mockUser = { 
+        email: 'test@example.com',
+        getIdToken: vi.fn().mockResolvedValue('mock-firebase-token')
+      };
       
       mockOnAuthStateChanged.mockImplementation((_auth: any, callback: any) => {
         callback(mockUser);
@@ -260,6 +263,9 @@ describe('Dashboard Component', () => {
         expect(mockChromeStorage.local.set).toHaveBeenCalledWith({
           userEmail: 'test@example.com',
         });
+        expect(mockChromeStorage.local.set).toHaveBeenCalledWith({
+          firebaseToken: 'mock-firebase-token',
+        });
       });
     });
 
@@ -270,13 +276,14 @@ describe('Dashboard Component', () => {
       });
 
       mockChromeStorage.local.get.mockImplementation((_keys: any, callback: any) => {
-        callback({ userEmail: 'stored@example.com' });
+        callback({ userEmail: 'stored@example.com', firebaseToken: 'stored-firebase-token' });
       });
 
       render(<Dashboard />);
 
       await waitFor(() => {
         expect(console.log).toHaveBeenCalledWith('Retrieved email from storage:', 'stored@example.com');
+        expect(console.log).toHaveBeenCalledWith('Retrieved firebase token from storage');
       });
     });
 
@@ -414,12 +421,18 @@ describe('Dashboard Component', () => {
       const userEmail = 'test@example.com';
       
       mockOnAuthStateChanged.mockImplementation((_auth: any, callback: any) => {
-        callback({ email: userEmail });
+        callback({ 
+          email: userEmail,
+          getIdToken: vi.fn().mockResolvedValue('mock-firebase-token') 
+        });
         return unsubscribeFn;
       });
 
       mockChromeStorage.local.get.mockImplementation((_keys: any, callback: any) => {
-        callback({ selectedNotionPage: selectedPage });
+        callback({ 
+          selectedNotionPage: selectedPage,
+          firebaseToken: 'mock-firebase-token'
+        });
       });
 
       // Mock successful comparison with unsynced items
@@ -509,12 +522,18 @@ describe('Dashboard Component', () => {
       const userEmail = 'test@example.com';
       
       mockOnAuthStateChanged.mockImplementation((_auth: any, callback: any) => {
-        callback({ email: userEmail });
+        callback({ 
+          email: userEmail,
+          getIdToken: vi.fn().mockResolvedValue('mock-firebase-token')
+        });
         return unsubscribeFn;
       });
 
       mockChromeStorage.local.get.mockImplementation((_keys: any, callback: any) => {
-        callback({ selectedNotionPage: selectedPage });
+        callback({ 
+          selectedNotionPage: selectedPage,
+          firebaseToken: 'mock-firebase-token'
+        });
       });
       
       // Mock successful comparison
@@ -558,7 +577,6 @@ describe('Dashboard Component', () => {
         expect(mockChromeRuntime.sendMessage).toHaveBeenCalledWith({
           type: 'SYNC_TO_NOTION',
           data: {
-            email: userEmail,
             pageId: selectedPage.id,
           },
         });
@@ -780,7 +798,7 @@ describe('Dashboard Component', () => {
         expect(console.log).toHaveBeenCalledWith('Sync button state:', {
           isLoading: false,
           hasSelectedPage: false,
-          hasUserEmail: false,
+          hasFirebaseToken: false,
           isDisabled: true,
         });
       });
@@ -838,7 +856,7 @@ describe('Dashboard Component', () => {
         expect(console.log).toHaveBeenCalledWith('Sync button state:', {
           isLoading: false,
           hasSelectedPage: true,
-          hasUserEmail: false,
+          hasFirebaseToken: false,
           isDisabled: true,
         });
       });
@@ -1089,7 +1107,6 @@ describe('Dashboard Component', () => {
         expect(mockChromeRuntime.sendMessage).toHaveBeenCalledWith({
           type: 'SYNC_TO_NOTION',
           data: {
-            email: userEmail,
             pageId: selectedPage.id,
           },
         });
@@ -1162,12 +1179,18 @@ describe('Dashboard Component', () => {
       const userEmail = 'test@example.com';
       
       mockOnAuthStateChanged.mockImplementation((_auth: any, callback: any) => {
-        callback({ email: userEmail });
+        callback({ 
+          email: userEmail,
+          getIdToken: vi.fn().mockResolvedValue('mock-firebase-token') 
+        });
         return unsubscribeFn;
       });
 
       mockChromeStorage.local.get.mockImplementation((_keys: any, callback: any) => {
-        callback({ selectedNotionPage: selectedPage });
+        callback({ 
+          selectedNotionPage: selectedPage,
+          firebaseToken: 'mock-firebase-token' 
+        });
       });
 
       // Mock successful comparison and sync
@@ -1597,7 +1620,6 @@ describe('Dashboard Component', () => {
         expect(mockChromeRuntime.sendMessage).toHaveBeenCalledWith({
           type: 'SYNC_TO_NOTION',
           data: {
-            email: userEmail,
             pageId: selectedPage.id,
           },
         });
@@ -1669,7 +1691,6 @@ describe('Dashboard Component', () => {
         expect(mockChromeRuntime.sendMessage).toHaveBeenCalledWith({
           type: 'SYNC_TO_NOTION',
           data: {
-            email: userEmail,
             pageId: selectedPage.id,
           },
         });

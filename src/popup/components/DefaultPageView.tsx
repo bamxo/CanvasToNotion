@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { FaFile } from 'react-icons/fa';
+import { FaFile, FaExclamationCircle, FaCog } from 'react-icons/fa';
 import styles from './PageSelector.module.css';
+import { isDevelopment } from '../../services/api.config';
 
 interface NotionPage {
   id: string;
@@ -28,14 +29,47 @@ const DefaultPageView: React.FC<DefaultPageViewProps> = ({
     return () => clearTimeout(timer);
   }, []);
 
+  const handleOpenSettings = () => {
+    // Determine the settings URL based on environment
+    const webAppBaseUrl = isDevelopment 
+      ? 'http://localhost:5173'
+      : 'https://canvastonotion.netlify.app';
+    
+    chrome.tabs.create({ url: `${webAppBaseUrl}/settings` });
+    window.close();
+  };
+
   const animationStyle = {
     opacity: isVisible ? 1 : 0,
     transform: isVisible ? 'scale(1)' : 'scale(0.95)',
     transition: 'opacity 0.5s ease-in-out, transform 0.5s ease-out'
   };
 
+  // If no pages, display the full-screen no pages message
+  if (pages.length === 0) {
+    return (
+      <div style={animationStyle} className={styles.notionDisconnectedContainer}>
+        <div className={styles.iconWrapper}>
+          <FaExclamationCircle className={styles.disconnectedIcon} />
+        </div>
+        <h2 className={styles.disconnectedTitle}>No Pages Found</h2>
+        <p className={styles.disconnectedMessage}>
+          You need to connect to Notion and select pages to sync with in settings.
+        </p>
+        <button 
+          className={styles.settingsButton}
+          onClick={handleOpenSettings}
+        >
+          <FaCog className={styles.settingsIcon} />
+          Open Settings
+        </button>
+      </div>
+    );
+  }
+
+  // Regular view with pages
   return (
-    <div style={animationStyle}>
+    <div style={animationStyle} className={styles.defaultPageWrapper}>
       <div className={styles.headerContainer}>
         <h2 className={styles.title}>Select a Page</h2>
         <p className={styles.subtext}>

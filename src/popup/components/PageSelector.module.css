@@ -7,7 +7,9 @@
   flex-direction: column;
   color: white;
   background: #1a1a1a;
-  min-height: auto;
+  min-height: 400px;
+  max-height: 600px;
+  height: fit-content;
   padding: 0 2em 2em;
   box-sizing: border-box;
   position: relative;
@@ -61,12 +63,13 @@
   background: rgba(255, 106, 44, 0.18);
   border-radius: 50%;
   pointer-events: none;
-  bottom: -10px;
+  bottom: 0;
+  z-index: 0;
 }
 
 @keyframes floatParticle {
   0% {
-    transform: translateY(0) translateX(0);
+    transform: translateY(20px) translateX(0);
     opacity: 0;
   }
   10% {
@@ -76,7 +79,7 @@
     opacity: 0.8;
   }
   100% {
-    transform: translateY(-400px) translateX(20px);
+    transform: translateY(-300px) translateX(20px);
     opacity: 0;
   }
 }
@@ -91,6 +94,15 @@
   position: relative;
   z-index: 1;
   height: auto;
+  min-height: 200px;
+  flex-grow: 1;
+}
+
+.defaultPageWrapper {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .headerContainer {
@@ -132,6 +144,7 @@
   overflow-y: auto;
   padding-right: 10px;
   margin: 10px 0;
+  flex-shrink: 0;
 }
 
 .pageList::-webkit-scrollbar {
@@ -373,4 +386,19 @@
   50% {
     opacity: 1;
   }
+}
+
+/* The following classes are no longer used since we're using notionDisconnectedContainer styles */
+/* But keeping them in case they're needed in the future */
+.noPages {
+  display: none; /* Hide unused class */
+}
+.noPagesIcon {
+  display: none;
+}
+.noPagesTitle {
+  display: none;
+}
+.noPagesMessage {
+  display: none;
 } 

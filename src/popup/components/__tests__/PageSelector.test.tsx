@@ -170,7 +170,7 @@ describe('PageSelector Component', () => {
       
       // Email exists in storage
       mockChromeStorage.local.get.mockImplementation((_keys: string | string[] | Record<string, any>, callback: (result: Record<string, any>) => void) => {
-        callback({ userEmail: 'storage@example.com' });
+        callback({ userEmail: 'storage@example.com', firebaseToken: 'mock-firebase-token' });
       });
       
       // Mock successful connection check
@@ -188,7 +188,10 @@ describe('PageSelector Component', () => {
       // First axios call should be to check connection
       expect(mockAxiosGet).toHaveBeenCalledWith('http://localhost:3000/api/notion/connected', 
         expect.objectContaining({
-          params: { email: 'storage@example.com' }
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer mock-firebase-token'
+          }
         })
       );
     });

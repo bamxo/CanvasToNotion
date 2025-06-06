@@ -24,7 +24,6 @@ interface NotionPage {
 }
 
 interface SyncData {
-  email: string;
   pageId: string;
 }
 
@@ -47,6 +46,7 @@ const Dashboard = () => {
   const [showPageSelector, setShowPageSelector] = useState(false)
   const [selectedPage, setSelectedPage] = useState<NotionPage | null>(null)
   const [userEmail, setUserEmail] = useState<string | null>(null)
+  const [firebaseToken, setFirebaseToken] = useState<string | null>(null)
   const [unsyncedItems, setUnsyncedItems] = useState<UnsyncedItem[]>([])
 
   // Generate array of particles with useRef to avoid re-creation on re-renders
@@ -64,14 +64,26 @@ const Dashboard = () => {
       console.log('Auth state changed:', user?.email);
       if (user?.email) {
         setUserEmail(user.email);
+        // Get firebase token when user is authenticated
+        user.getIdToken().then(token => {
+          setFirebaseToken(token);
+          chrome.storage.local.set({ firebaseToken: token });
+        });
       } else {
         // If we don't have a user email from auth state, try to get it from storage
-        chrome.storage.local.get(['userEmail'], (result) => {
+        chrome.storage.local.get(['userEmail', 'firebaseToken'], (result) => {
           if (result.userEmail) {
             setUserEmail(result.userEmail);
             console.log('Retrieved email from storage:', result.userEmail);
           } else {
             console.log('No email found in storage');
+          }
+          
+          if (result.firebaseToken) {
+            setFirebaseToken(result.firebaseToken);
+            console.log('Retrieved firebase token from storage');
+          } else {
+            console.log('No firebase token found in storage');
           }
         });
       }
@@ -90,28 +102,29 @@ const Dashboard = () => {
     return () => unsubscribe();
   }, []);
 
-  // New effect to trigger comparison when page is selected
+  // New effect to trigger comparison when page is selected and authentication is available
   useEffect(() => {
-    if (selectedPage && userEmail) {
+    if (selectedPage && firebaseToken) {
       compareWithNotion();
     }
-  }, [selectedPage, userEmail]);
+  }, [selectedPage, firebaseToken]);
 
-  // Debug log whenever email or selectedPage changes
+  // Debug log whenever auth or selectedPage changes
   useEffect(() => {
     console.log('Current user email:', userEmail);
     console.log('Selected page:', selectedPage ? {id: selectedPage.id, title: selectedPage.title} : 'None');
+    console.log('Firebase token available:', !!firebaseToken);
 
     // Store email in chrome storage when it changes
     if (userEmail) {
       chrome.storage.local.set({ userEmail });
     }
-  }, [userEmail, selectedPage]);
+  }, [userEmail, selectedPage, firebaseToken]);
 
   // New function to compare Canvas assignments with Notion
   const compareWithNotion = async (): Promise<number> => {
-    if (!selectedPage || !userEmail) {
-      console.log('Cannot compare: missing page or email');
+    if (!selectedPage || !firebaseToken) {
+      console.log('Cannot compare: missing page or auth token');
       return 0;
     }
     
@@ -120,7 +133,6 @@ const Dashboard = () => {
       
       // Prepare compare data
       const compareData = {
-        email: userEmail,
         pageId: selectedPage.id,
       };
 
@@ -188,13 +200,13 @@ const Dashboard = () => {
   };
 
   const handleSync = async () => {
-    if (!selectedPage || !userEmail) {
+    if (!selectedPage || !firebaseToken) {
       console.log('Sync button disabled because:', {
         hasSelectedPage: !!selectedPage,
-        hasUserEmail: !!userEmail
+        hasFirebaseToken: !!firebaseToken
       });
       setSyncStatus('error');
-      console.error('Missing required data: page or user email');
+      console.error('Missing required data: page or authentication token');
       return;
     }
 
@@ -204,7 +216,6 @@ const Dashboard = () => {
       
       // Prepare sync data
       const syncData: SyncData = {
-        email: userEmail,
         pageId: selectedPage.id,
       };
 
@@ -290,7 +301,7 @@ const Dashboard = () => {
         }
 
         // Start checking sync status with exponential backoff
-        await checkSyncStatus(userEmail, assignmentCount);
+        await checkSyncStatus(assignmentCount);
       }
     } catch (error) {
       console.error('Sync failed:', error);
@@ -300,7 +311,15 @@ const Dashboard = () => {
   }
 
   // Function to check sync status with exponential backoff
-  const checkSyncStatus = async (email: string, assignmentCount: number = 0) => {
+  const checkSyncStatus = async (assignmentCount: number = 0) => {
+    // Ensure we have a firebase token
+    if (!firebaseToken) {
+      console.error('Cannot check sync status: missing authentication token');
+      setSyncStatus('error');
+      setIsLoading(false);
+      return;
+    }
+    
     // Calculate appropriate max attempts based on assignment count
     // Adjusted formula to match observed performance: 50 assignments = ~15 attempts
     const baseAttempts = 10;
@@ -319,11 +338,15 @@ const Dashboard = () => {
         attempts++;
         
         // Fetch the sync status from the Netlify function
-        const encodedEmail = encodeURIComponent(email);
-        const statusUrl = `https://canvastonotion.netlify.app/.netlify/functions/notion/sync-status?email=${encodedEmail}`;
+        const statusUrl = `https://canvastonotion.netlify.app/.netlify/functions/notion/sync-status`;
         
         console.log(`Checking sync status (attempt ${attempts}/${maxAttempts})...`);
-        const response = await fetch(statusUrl);
+        const response = await fetch(statusUrl, {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${firebaseToken}`
+          }
+        });
         const data = await response.json();
         
         console.log('Sync status response:', data);
@@ -424,11 +447,11 @@ const Dashboard = () => {
   }
 
   // Debug log for button disabled state
-  const buttonDisabled = isLoading || !selectedPage || !userEmail;
+  const buttonDisabled = isLoading || !selectedPage || !firebaseToken;
   console.log('Sync button state:', {
     isLoading,
     hasSelectedPage: !!selectedPage,
-    hasUserEmail: !!userEmail,
+    hasFirebaseToken: !!firebaseToken,
     isDisabled: buttonDisabled
   });
 
@@ -438,6 +461,15 @@ const Dashboard = () => {
       {particles}
 
       <div className={`${styles.content} ${styles.fadeIn}`}>
+        {!firebaseToken && (
+          <div className={styles.errorContainer}>
+            <p className={styles.errorText}>Authentication Required</p>
+            <p className={styles.retryText}>
+              Please sign in to use this extension.
+            </p>
+          </div>
+        )}
+
         <PageSelectionContainer 
           selectedPage={selectedPage}
           onPageSelect={() => setShowPageSelector(true)}
@@ -445,7 +477,7 @@ const Dashboard = () => {
         />
 
         {/* Unsynced Items Section */}
-        {selectedPage && (
+        {selectedPage && firebaseToken && (
           <UnsyncedContainer 
             unsyncedItems={unsyncedItems}
             onClearItems={() => setUnsyncedItems([])}

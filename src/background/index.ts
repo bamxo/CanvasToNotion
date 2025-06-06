@@ -44,16 +44,28 @@ async function syncWithNotion(courses: any[], assignments: any[], message: any) 
       console.warn(`Server might not be running at ${API_BASE_URL}`);
     }
     
+    // Get the Firebase token from storage with better error handling
+    const firebaseToken = await new Promise<string>((resolve, reject) => {
+      chrome.storage.local.get(['firebaseToken'], (result) => {
+        if (!result.firebaseToken) {
+          console.error('Firebase token not found in storage');
+          reject(new Error('Firebase token not found in storage'));
+        } else {
+          console.log('Firebase token retrieved successfully');
+          resolve(result.firebaseToken);
+        }
+      });
+    });
+    
     const payload = {
-      email: message.type === 'SYNC_TO_NOTION' ? message.data.email : null,
       pageId: message.type === 'SYNC_TO_NOTION' ? message.data.pageId : null,
       courses: simplifiedCourses,
       assignments: simplifiedAssignments
     };
     
     // Validate payload before sending
-    if (!payload.email || !payload.pageId) {
-      console.warn('Missing email or pageId, but continuing with sync attempt');
+    if (!payload.pageId) {
+      console.warn('Missing pageId, but continuing with sync attempt');
     }
     
     console.log('Sending sync payload:', payload);
@@ -62,10 +74,14 @@ async function syncWithNotion(courses: any[], assignments: any[], message: any) 
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Accept': 'application/json'
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${firebaseToken}`
       },
       body: JSON.stringify(payload)
     });
+    
+    // Log response status for debugging
+    console.log(`Sync API response status: ${response.status} ${response.statusText}`);
     
     // Check if response is actually JSON
     const contentType = response.headers.get('content-type');
@@ -73,7 +89,7 @@ async function syncWithNotion(courses: any[], assignments: any[], message: any) 
       // If not JSON, get the text and log it for debugging
       const textResponse = await response.text();
       console.error('Server returned non-JSON response:', textResponse);
-      throw new Error('Server returned non-JSON response');
+      throw new Error(`Server returned non-JSON response with status ${response.status}`);
     }
 
     const data = await response.json();
@@ -117,8 +133,20 @@ async function compareWithNotion(courses: any[], assignments: any[], pageId: str
       console.warn(`Server might not be running at ${API_BASE_URL}`);
     }
     
+    // Get the Firebase token from storage with better error handling
+    const firebaseToken = await new Promise<string>((resolve, reject) => {
+      chrome.storage.local.get(['firebaseToken'], (result) => {
+        if (!result.firebaseToken) {
+          console.error('Firebase token not found in storage');
+          reject(new Error('Firebase token not found in storage'));
+        } else {
+          console.log('Firebase token retrieved successfully');
+          resolve(result.firebaseToken);
+        }
+      });
+    });
+    
     const payload = {
-      email: message.data?.email || null,
       pageId: pageId || null, // Explicitly include the pageId for the backend to know which Notion page to compare
       courses: simplifiedCourses,
       assignments: simplifiedAssignments
@@ -135,10 +163,14 @@ async function compareWithNotion(courses: any[], assignments: any[], pageId: str
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Accept': 'application/json'
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${firebaseToken}`
       },
       body: JSON.stringify(payload)
     });
+    
+    // Log response status for debugging
+    console.log(`Compare API response status: ${response.status} ${response.statusText}`);
     
     // Check if response is actually JSON
     const contentType = response.headers.get('content-type');
@@ -146,7 +178,7 @@ async function compareWithNotion(courses: any[], assignments: any[], pageId: str
       // If not JSON, get the text and log it for debugging
       const textResponse = await response.text();
       console.error('Server returned non-JSON response:', textResponse);
-      throw new Error('Server returned non-JSON response');
+      throw new Error(`Server returned non-JSON response with status ${response.status}`);
     }
 
     const data = await response.json();

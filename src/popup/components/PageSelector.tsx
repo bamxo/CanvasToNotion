@@ -47,13 +47,14 @@ const PageSelector: React.FC<PageSelectorProps> = ({ onPageSelect }) => {
   const [autoRetryCount, setAutoRetryCount] = useState(0);
   const [isNotionConnected, setIsNotionConnected] = useState<boolean | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [firebaseToken, setFirebaseToken] = useState<string | null>(null);
   const maxAutoRetries = 3;
   const autoRetryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   
   console.log("Component render state:", { isLoading, isNotionConnected, userEmail });
 
-  // Set up auth state listener to get user email
+  // Set up auth state listener to get user email and firebase token
   useEffect(() => {
     console.log("Setting up auth state listener");
     const auth = getAuth();
@@ -62,14 +63,26 @@ const PageSelector: React.FC<PageSelectorProps> = ({ onPageSelect }) => {
       console.log('Auth state changed:', user?.email);
       if (user?.email) {
         setUserEmail(user.email);
+        // Get firebase token when user is authenticated
+        user.getIdToken().then(token => {
+          setFirebaseToken(token);
+          chrome.storage.local.set({ firebaseToken: token });
+        });
       } else {
-        // If we don't have a user email from auth state, try to get it from storage
-        chrome.storage.local.get(['userEmail'], (result) => {
+        // If we don't have a user from auth state, try to get from storage
+        chrome.storage.local.get(['userEmail', 'firebaseToken'], (result) => {
           if (result.userEmail) {
             console.log('Retrieved email from storage:', result.userEmail);
             setUserEmail(result.userEmail);
-          } else {
-            console.log('No email found in auth or storage');
+          }
+          
+          if (result.firebaseToken) {
+            console.log('Retrieved firebase token from storage');
+            setFirebaseToken(result.firebaseToken);
+          }
+          
+          if (!result.userEmail || !result.firebaseToken) {
+            console.log('Missing authentication data in storage');
             setError('User not authenticated. Please sign in first.');
             setIsLoading(false);
           }
@@ -81,24 +94,27 @@ const PageSelector: React.FC<PageSelectorProps> = ({ onPageSelect }) => {
     return () => unsubscribe();
   }, []);
 
-  // Trigger connection check when user email becomes available
+  // Trigger connection check when auth info becomes available
   useEffect(() => {
-    if (userEmail) {
-      console.log(`User email available (${userEmail}), checking connection...`);
+    if (userEmail && firebaseToken) {
+      console.log(`Authentication info available, checking connection...`);
       fetchPages(true);
     }
-  }, [userEmail]);
+  }, [userEmail, firebaseToken]);
 
   const checkNotionConnection = async () => {
     try {
-      if (!userEmail) {
-        console.log('Waiting for user email...');
+      if (!firebaseToken) {
+        console.log('Waiting for firebase token...');
         return false;
       }
 
-      console.log('Checking Notion connection for email:', userEmail);
+      console.log('Checking Notion connection');
       const response = await axios.get(ENDPOINTS.CONNECTED, {
-        params: { email: userEmail },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${firebaseToken}`
+        },
         timeout: 5000
       });
 
@@ -134,12 +150,15 @@ const PageSelector: React.FC<PageSelectorProps> = ({ onPageSelect }) => {
       setIsLoading(true);
       setError(null);
       
-      if (!userEmail) {
-        throw new Error('User email not found');
+      if (!firebaseToken) {
+        throw new Error('Firebase token not found');
       }
 
       const response = await axios.get(ENDPOINTS.PAGES, {
-        params: { email: userEmail },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${firebaseToken}`
+        },
         signal: abortControllerRef.current.signal,
         timeout: 5000 // Add timeout to prevent hanging requests
       });
