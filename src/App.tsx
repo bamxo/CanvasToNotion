@@ -11,6 +11,22 @@ function App() {
   const [selectedPage, setSelectedPage] = useState(false)
 
   useEffect(() => {
+    // Create a connection to the background script in production
+    let port: chrome.runtime.Port | null = null;
+    
+    if (import.meta.env.MODE === 'production') {
+      port = chrome.runtime.connect({ name: 'popup' });
+      
+      port.onMessage.addListener((message) => {
+        console.log('Received message from background script:', message);
+        if (message.type === 'COOKIE_AUTH_SUCCESS') {
+          console.log('Authenticated via cookie through port connection');
+          setIsAuthenticated(true);
+          setCheckingAuth(false);
+        }
+      });
+    }
+
     // Check if current page is Canvas
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       const currentUrl = tabs[0]?.url || '';
@@ -20,13 +36,26 @@ function App() {
       setIsCanvasPage(isCanvas);
     });
 
-    // Check initial state
-    chrome.storage.local.get(['canvasToken', 'selectedPage'], (result) => {
-      console.log('Initial state:', result);
-      setIsAuthenticated(!!result.canvasToken);
-      setSelectedPage(!!result.selectedPage);
-      setCheckingAuth(false);
-    });
+    // In production, check for cookie authentication first
+    if (import.meta.env.MODE === 'production') {
+      console.log('Production mode detected, checking for cookie auth...');
+      chrome.runtime.sendMessage({ type: 'CHECK_AUTH' }, (response) => {
+        if (chrome.runtime.lastError) {
+          console.error('Error checking auth:', chrome.runtime.lastError);
+        } else if (response && response.isAuthenticated) {
+          console.log('Authenticated via cookie');
+          setIsAuthenticated(true);
+          setCheckingAuth(false);
+          return;
+        }
+        
+        // Continue with normal auth check if cookie auth failed
+        checkInitialAuthState();
+      });
+    } else {
+      // In development, just check storage
+      checkInitialAuthState();
+    }
 
     // Listen for storage changes
     const handleStorageChange = (changes: { [key: string]: chrome.storage.StorageChange }) => {
@@ -62,8 +91,23 @@ function App() {
       console.log('Cleaning up listeners...');
       chrome.storage.onChanged.removeListener(handleStorageChange);
       chrome.runtime.onMessage.removeListener(messageListener);
+      
+      // Disconnect port if it exists
+      if (port) {
+        port.disconnect();
+      }
     };
   }, []);
+
+  // Helper function to check initial auth state from storage
+  const checkInitialAuthState = () => {
+    chrome.storage.local.get(['canvasToken', 'selectedPage'], (result) => {
+      console.log('Initial state from storage:', result);
+      setIsAuthenticated(!!result.canvasToken);
+      setSelectedPage(!!result.selectedPage);
+      setCheckingAuth(false);
+    });
+  };
 
   if (checkingAuth) {
     return <div>Loading...</div>

@@ -24,7 +24,8 @@
     "activeTab",
     "tabs",
     "identity",
-    "offscreen"
+    "offscreen",
+    "cookies"
   ],
   "externally_connectable": {
     "matches": [

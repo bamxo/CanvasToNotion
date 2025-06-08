@@ -89,6 +89,18 @@ const AppBar = () => {
       const auth = getAuth();
       await auth.signOut();
       
+      // Call the logout API endpoint
+      try {
+        await fetch('http://api.canvastonotion.io/.netlify/functions/auth/logout', {
+          method: 'POST',
+          credentials: 'include'
+        });
+        console.log('Logout API call completed');
+      } catch (apiError) {
+        console.error('Error calling logout API:', apiError);
+        // Continue with logout process even if API call fails
+      }
+      
       // Clear storage
       await chrome.storage.local.remove([
         'isGuestMode',

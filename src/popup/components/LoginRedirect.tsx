@@ -40,6 +40,23 @@ const LoginRedirect = () => {
       const currentUrl = tabs[0]?.url || '';
       setIsCanvasPage(currentUrl.includes('canvas'));
     });
+
+    // Check for cookie authentication in production mode
+    if (!isDevelopment) {
+      setIsLoading(true);
+      console.log('Production mode detected in LoginRedirect, checking for cookie auth...');
+      chrome.runtime.sendMessage({ type: 'CHECK_AUTH' }, (response) => {
+        setIsLoading(false);
+        if (chrome.runtime.lastError) {
+          console.error('Error checking auth in LoginRedirect:', chrome.runtime.lastError);
+        } else if (response && response.isAuthenticated) {
+          console.log('Successfully authenticated via cookie in LoginRedirect');
+          // The App component will handle redirecting based on auth state change
+        } else {
+          console.log('No cookie authentication found in LoginRedirect');
+        }
+      });
+    }
   }, []);
 
   /**
