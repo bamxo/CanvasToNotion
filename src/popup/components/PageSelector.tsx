@@ -64,10 +64,16 @@ const PageSelector: React.FC<PageSelectorProps> = ({ onPageSelect }) => {
       if (user?.email) {
         setUserEmail(user.email);
         // Get firebase token when user is authenticated
-        user.getIdToken().then(token => {
-          setFirebaseToken(token);
-          chrome.storage.local.set({ firebaseToken: token });
-        });
+        if (user.getIdToken) {
+          user.getIdToken().then(token => {
+            setFirebaseToken(token);
+            chrome.storage.local.set({ firebaseToken: token });
+          }).catch(error => {
+            console.error('Error getting ID token:', error);
+          });
+        } else {
+          console.log('user.getIdToken is not available');
+        }
       } else {
         // If we don't have a user from auth state, try to get from storage
         chrome.storage.local.get(['userEmail', 'firebaseToken'], (result) => {
@@ -297,19 +303,18 @@ const PageSelector: React.FC<PageSelectorProps> = ({ onPageSelect }) => {
     );
   }
 
-  // When user is not authenticated
+  // Continue with flow even if user is not authenticated
   if (!userEmail && !isLoading) {
     return (
       <div className={styles.container}>
         <AppBar />
         {particles}
         <div className={styles.content}>
-          <div className={styles.errorContainer}>
-            <p className={styles.errorText}>Authentication Required</p>
-            <p className={styles.retryText}>
-              Please sign in to access your Notion pages.
-            </p>
-          </div>
+          <DefaultPageView 
+            pages={pages}
+            isLoading={isLoading}
+            onPageSelect={handlePageSelect}
+          />
         </div>
       </div>
     );

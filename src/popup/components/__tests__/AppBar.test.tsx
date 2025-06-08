@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
+import * as apiConfig from '../../../services/api.config';
 
 // Mock Firebase auth using factory functions
 vi.mock('firebase/auth', () => {
@@ -196,6 +197,110 @@ describe('AppBar Component', () => {
         });
       });
     });
+
+    it('should handle user with display name and photo URL', async () => {
+      const userWithInfo = {
+        email: 'user@example.com',
+        displayName: 'Test User',
+        photoURL: 'https://example.com/photo.jpg'
+      };
+      
+      mockOnAuthStateChanged.mockImplementation((_auth: any, callback: any) => {
+        callback(userWithInfo);
+        return vi.fn();
+      });
+
+      render(<AppBar />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Test User')).toBeInTheDocument();
+        expect(screen.getByText('Signed In')).toBeInTheDocument();
+      });
+
+      const profileImage = screen.getByAltText('User Profile');
+      expect(profileImage).toHaveAttribute('src', 'https://example.com/photo.jpg');
+      
+      // Verify userInfo is stored
+      expect(mockChromeStorage.local.set).toHaveBeenCalledWith(expect.objectContaining({
+        userInfo: {
+          displayName: 'Test User',
+          email: 'user@example.com',
+          photoURL: 'https://example.com/photo.jpg'
+        }
+      }));
+    });
+
+    it('should use stored userInfo when available', async () => {
+      mockOnAuthStateChanged.mockImplementation((_auth: any, callback: any) => {
+        callback(null);
+        return vi.fn();
+      });
+
+      mockChromeStorage.local.get.mockImplementation((_keys: any, callback: any) => {
+        callback({ 
+          userEmail: 'stored@example.com',
+          userInfo: {
+            displayName: 'Stored User',
+            email: 'stored@example.com',
+            photoURL: 'https://example.com/stored.jpg'
+          }
+        });
+      });
+
+      render(<AppBar />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Stored User')).toBeInTheDocument();
+        const profileImage = screen.getByAltText('User Profile');
+        expect(profileImage).toHaveAttribute('src', 'https://example.com/stored.jpg');
+      });
+    });
+
+    it('should handle photoUrl property for backward compatibility', async () => {
+      mockOnAuthStateChanged.mockImplementation((_auth: any, callback: any) => {
+        callback(null);
+        return vi.fn();
+      });
+
+      mockChromeStorage.local.get.mockImplementation((_keys: any, callback: any) => {
+        callback({ 
+          userEmail: 'legacy@example.com',
+          userInfo: {
+            displayName: 'Legacy User',
+            email: 'legacy@example.com',
+            photoUrl: 'https://example.com/legacy.jpg' // Using the older property name
+          }
+        });
+      });
+
+      render(<AppBar />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Legacy User')).toBeInTheDocument();
+        const profileImage = screen.getByAltText('User Profile');
+        expect(profileImage).toHaveAttribute('src', 'https://example.com/legacy.jpg');
+      });
+    });
+
+    it('should handle image loading error gracefully', async () => {
+      mockOnAuthStateChanged.mockImplementation((_auth: any, callback: any) => {
+        callback({
+          email: 'test@example.com',
+          photoURL: 'https://invalid-url.com/broken.jpg'
+        });
+        return vi.fn();
+      });
+
+      render(<AppBar />);
+
+      const profileImage = await screen.findByAltText('User Profile');
+      
+      // Simulate image loading error
+      fireEvent.error(profileImage);
+      
+      // Should fallback to default image
+      expect(profileImage).toHaveAttribute('src', 'mocked-default-profile.svg');
+    });
   });
 
   describe('User Interactions', () => {
@@ -208,6 +313,9 @@ describe('AppBar Component', () => {
     });
 
     it('should handle settings button click', async () => {
+      // Mock development environment
+      vi.spyOn(apiConfig, 'isDevelopment', 'get').mockReturnValue(true);
+      
       render(<AppBar />);
 
       const settingsButton = screen.getByAltText('Settings').closest('button');
@@ -219,6 +327,20 @@ describe('AppBar Component', () => {
         url: 'http://localhost:5173/settings',
       });
       expect(window.close).toHaveBeenCalled();
+    });
+
+    it('should handle settings button click in production', async () => {
+      // Mock production environment
+      vi.spyOn(apiConfig, 'isDevelopment', 'get').mockReturnValue(false);
+      
+      render(<AppBar />);
+
+      const settingsButton = screen.getByAltText('Settings').closest('button');
+      fireEvent.click(settingsButton!);
+
+      expect(mockChromeTabs.create).toHaveBeenCalledWith({
+        url: 'https://canvastonotion.io/settings',
+      });
     });
 
     it('should handle settings button click error gracefully', async () => {
@@ -255,6 +377,7 @@ describe('AppBar Component', () => {
           'firebaseToken',
           'tokenTimestamp',
           'userId',
+          'userInfo',
         ]);
         expect(window.location.reload).toHaveBeenCalled();
       });
@@ -315,7 +438,42 @@ describe('AppBar Component', () => {
       });
     });
 
-    it('should ignore non-logout external messages', () => {
+    it('should handle external UPDATE_USER_INFO message', async () => {
+      render(<AppBar />);
+
+      const sendResponse = vi.fn();
+      const updatedUserInfo = {
+        displayName: 'Updated User',
+        email: 'updated@example.com',
+        photoURL: 'https://example.com/updated.jpg'
+      };
+      
+      const message = { 
+        type: 'UPDATE_USER_INFO',
+        data: updatedUserInfo
+      };
+
+      // Simulate external message
+      const result = messageHandler(message, {}, sendResponse);
+
+      expect(result).toBe(true); // Should keep message channel open
+      
+      await waitFor(() => {
+        expect(sendResponse).toHaveBeenCalledWith({ success: true });
+        expect(mockChromeStorage.local.set).toHaveBeenCalledWith({ 
+          userInfo: updatedUserInfo 
+        });
+      });
+      
+      // Trigger a re-render to see if the UI updates
+      render(<AppBar />);
+      
+      await waitFor(() => {
+        expect(screen.getByText('Updated User')).toBeInTheDocument();
+      });
+    });
+
+    it('should ignore non-recognized external messages', () => {
       render(<AppBar />);
 
       const sendResponse = vi.fn();

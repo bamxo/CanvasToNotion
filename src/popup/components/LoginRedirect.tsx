@@ -57,7 +57,7 @@ const LoginRedirect = () => {
       // Determine the login URL based on environment
       const webAppBaseUrl = isDevelopment 
         ? 'http://localhost:5173'
-        : 'https://canvastonotion.netlify.app';
+        : 'https://canvastonotion.io';
       
       // Open the webapp login page in a new tab
       chrome.tabs.create({ url: `${webAppBaseUrl}/lookup` })

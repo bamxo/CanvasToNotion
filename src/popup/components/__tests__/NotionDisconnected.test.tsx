@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import React from 'react';
 
 // Mock CSS modules
 vi.mock('../PageSelector.module.css', () => ({
@@ -130,7 +129,7 @@ describe('NotionDisconnected Component', () => {
     
     // Check that chrome.tabs.create was called with correct URL
     expect(mockChromeTabs.create).toHaveBeenCalledWith({ 
-      url: 'https://canvastonotion.netlify.app/settings' 
+      url: 'https://canvastonotion.io/settings' 
     });
     
     // Check that window.close was called

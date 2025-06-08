@@ -20,7 +20,7 @@ const NotionDisconnected: React.FC<NotionDisconnectedProps> = ({ onRetry }) => {
     // Determine the settings URL based on environment
     const webAppBaseUrl = isDevelopment 
       ? 'http://localhost:5173'
-      : 'https://canvastonotion.netlify.app';
+      : 'https://canvastonotion.io';
     
     chrome.tabs.create({ url: `${webAppBaseUrl}/settings` });
     window.close();

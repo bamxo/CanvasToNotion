@@ -4,10 +4,13 @@ import '@testing-library/jest-dom';
 
 // Import the component to test
 import DefaultPageView from '../DefaultPageView';
+import * as apiConfig from '../../../services/api.config';
 
 // Mock react-icons
 vi.mock('react-icons/fa', () => ({
-  FaFile: () => <span data-testid="mock-file-icon">📄</span>
+  FaFile: () => <span data-testid="mock-file-icon">📄</span>,
+  FaExclamationCircle: () => <span data-testid="mock-exclamation-icon">⚠️</span>,
+  FaCog: () => <span data-testid="mock-cog-icon">⚙️</span>
 }));
 
 // Mock CSS modules
@@ -21,7 +24,15 @@ vi.mock('../PageSelector.module.css', () => ({
     pageItem: 'page-item-mock',
     pageIcon: 'page-icon-mock',
     defaultPageIcon: 'default-page-icon-mock',
-    pageTitle: 'page-title-mock'
+    pageTitle: 'page-title-mock',
+    notionDisconnectedContainer: 'notion-disconnected-container-mock',
+    iconWrapper: 'icon-wrapper-mock',
+    disconnectedIcon: 'disconnected-icon-mock',
+    disconnectedTitle: 'disconnected-title-mock',
+    disconnectedMessage: 'disconnected-message-mock',
+    settingsButton: 'settings-button-mock',
+    settingsIcon: 'settings-icon-mock',
+    defaultPageWrapper: 'default-page-wrapper-mock'
   }
 }));
 
@@ -34,11 +45,25 @@ describe('DefaultPageView Component', () => {
   ];
   
   const mockOnPageSelect = vi.fn();
+  let mockChromeTabs: any;
 
   beforeEach(() => {
     vi.clearAllMocks();
     // Mock timer functions for animation testing
     vi.useFakeTimers();
+
+    // Mock Chrome tabs API
+    mockChromeTabs = {
+      create: vi.fn()
+    };
+
+    // Set up global chrome mock
+    global.chrome = {
+      tabs: mockChromeTabs
+    } as any;
+
+    // Mock window.close
+    global.window.close = vi.fn();
   });
 
   afterEach(() => {
@@ -135,9 +160,26 @@ describe('DefaultPageView Component', () => {
         />
       );
 
-      // No page buttons should be rendered
+      // No page items should be rendered, but there should be a settings button
       const pageButtons = screen.queryAllByRole('button');
-      expect(pageButtons).toHaveLength(0);
+      expect(pageButtons).toHaveLength(1); // There's one "Open Settings" button
+      expect(screen.getByText('Open Settings')).toBeInTheDocument();
+    });
+
+    it('should render no pages view with expected elements', () => {
+      render(
+        <DefaultPageView 
+          pages={[]} 
+          isLoading={false} 
+          onPageSelect={mockOnPageSelect} 
+        />
+      );
+      
+      // Check for expected elements in no pages view
+      expect(screen.getByText('No Pages Found')).toBeInTheDocument();
+      expect(screen.getByText('You need to connect to Notion and select pages to sync with in settings.')).toBeInTheDocument();
+      expect(screen.getByTestId('mock-exclamation-icon')).toBeInTheDocument();
+      expect(screen.getByTestId('mock-cog-icon')).toBeInTheDocument();
     });
   });
 
@@ -175,6 +217,37 @@ describe('DefaultPageView Component', () => {
       const container = screen.getByText('Select a Page').parentElement?.parentElement;
       expect(container).toHaveStyle('opacity: 1');
       expect(container).toHaveStyle('transform: scale(1)');
+    });
+
+    it('should apply animation styles to empty state as well', () => {
+      // Force reset the timers to ensure clean state
+      vi.useRealTimers();
+      vi.useFakeTimers();
+      
+      const { container: renderedContainer } = render(
+        <DefaultPageView 
+          pages={[]} 
+          isLoading={false} 
+          onPageSelect={mockOnPageSelect} 
+        />
+      );
+      
+      // The animation style should be applied inline
+      // Since the test is having issues with opacity, let's directly check the style attribute
+      const noPageContainer = renderedContainer.querySelector('div[style*="opacity"]');
+      expect(noPageContainer).toBeTruthy();
+      
+      // Check that transform scale is applied 
+      expect(noPageContainer?.getAttribute('style')).toContain('scale(0.95)');
+
+      // Advance timers and check final state
+      act(() => {
+        vi.advanceTimersByTime(200);
+      });
+      
+      // After animation
+      expect(noPageContainer?.getAttribute('style')).toContain('opacity: 1');
+      expect(noPageContainer?.getAttribute('style')).toContain('scale(1)');
     });
   });
 
@@ -226,6 +299,50 @@ describe('DefaultPageView Component', () => {
       // Test selecting a database page
       fireEvent.click(screen.getByText('Database Page'));
       expect(mockOnPageSelect).toHaveBeenCalledWith(customPages[2]);
+    });
+
+    it('should open settings in development environment when Open Settings is clicked', () => {
+      // Mock development environment
+      vi.spyOn(apiConfig, 'isDevelopment', 'get').mockReturnValue(true);
+      
+      render(
+        <DefaultPageView 
+          pages={[]} 
+          isLoading={false} 
+          onPageSelect={mockOnPageSelect} 
+        />
+      );
+
+      // Click the settings button
+      fireEvent.click(screen.getByText('Open Settings'));
+      
+      // Verify correct URL was used
+      expect(mockChromeTabs.create).toHaveBeenCalledWith({ 
+        url: 'http://localhost:5173/settings' 
+      });
+      expect(window.close).toHaveBeenCalled();
+    });
+
+    it('should open settings in production environment when Open Settings is clicked', () => {
+      // Mock production environment
+      vi.spyOn(apiConfig, 'isDevelopment', 'get').mockReturnValue(false);
+      
+      render(
+        <DefaultPageView 
+          pages={[]} 
+          isLoading={false} 
+          onPageSelect={mockOnPageSelect} 
+        />
+      );
+
+      // Click the settings button
+      fireEvent.click(screen.getByText('Open Settings'));
+      
+      // Verify correct URL was used
+      expect(mockChromeTabs.create).toHaveBeenCalledWith({ 
+        url: 'https://canvastonotion.netlify.app/settings' 
+      });
+      expect(window.close).toHaveBeenCalled();
     });
   });
 

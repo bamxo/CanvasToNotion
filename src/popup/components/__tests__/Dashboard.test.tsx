@@ -471,7 +471,10 @@ describe('Dashboard Component', () => {
       const userEmail = 'test@example.com';
       
       mockOnAuthStateChanged.mockImplementation((_auth: any, callback: any) => {
-        callback({ email: userEmail });
+        callback({ 
+          email: userEmail,
+          getIdToken: vi.fn().mockResolvedValue('mock-firebase-token')
+        });
         return unsubscribeFn;
       });
 
@@ -639,7 +642,10 @@ describe('Dashboard Component', () => {
       const userEmail = 'test@example.com';
       
       mockOnAuthStateChanged.mockImplementation((_auth: any, callback: any) => {
-        callback({ email: userEmail });
+        callback({ 
+          email: userEmail,
+          getIdToken: vi.fn().mockResolvedValue('mock-firebase-token')
+        });
         return unsubscribeFn;
       });
 
@@ -690,7 +696,10 @@ describe('Dashboard Component', () => {
       const userEmail = 'test@example.com';
       
       mockOnAuthStateChanged.mockImplementation((_auth: any, callback: any) => {
-        callback({ email: userEmail });
+        callback({ 
+          email: userEmail,
+          getIdToken: vi.fn().mockResolvedValue('mock-firebase-token')
+        });
         return unsubscribeFn;
       });
 
@@ -740,10 +749,11 @@ describe('Dashboard Component', () => {
 
   describe('Console Logging', () => {
     it('should log auth state changes', async () => {
-      const mockUser = { email: 'test@example.com' };
-      
       mockOnAuthStateChanged.mockImplementation((_auth: any, callback: any) => {
-        callback(mockUser);
+        callback({ 
+          email: 'test@example.com',
+          getIdToken: vi.fn().mockResolvedValue('mock-firebase-token')
+        });
         return unsubscribeFn;
       });
 
@@ -760,10 +770,12 @@ describe('Dashboard Component', () => {
 
     it('should log current user email and selected page', async () => {
       const selectedPage = { id: 'page-1', title: 'Test Page' };
-      const userEmail = 'test@example.com';
       
       mockOnAuthStateChanged.mockImplementation((_auth: any, callback: any) => {
-        callback({ email: userEmail });
+        callback({ 
+          email: 'test@example.com',
+          getIdToken: vi.fn().mockResolvedValue('mock-firebase-token')
+        });
         return unsubscribeFn;
       });
 
@@ -774,7 +786,7 @@ describe('Dashboard Component', () => {
       render(<Dashboard />);
 
       await waitFor(() => {
-        expect(console.log).toHaveBeenCalledWith('Current user email:', userEmail);
+        expect(console.log).toHaveBeenCalledWith('Current user email:', 'test@example.com');
         expect(console.log).toHaveBeenCalledWith('Selected page:', {
           id: selectedPage.id,
           title: selectedPage.title,
@@ -1050,7 +1062,10 @@ describe('Dashboard Component', () => {
       const userEmail = 'test@example.com';
       
       mockOnAuthStateChanged.mockImplementation((_auth: any, callback: any) => {
-        callback({ email: userEmail });
+        callback({ 
+          email: userEmail,
+          getIdToken: vi.fn().mockResolvedValue('mock-firebase-token')
+        });
         return unsubscribeFn;
       });
 
@@ -1129,7 +1144,10 @@ describe('Dashboard Component', () => {
       const userEmail = 'test@example.com';
       
       mockOnAuthStateChanged.mockImplementation((_auth: any, callback: any) => {
-        callback({ email: userEmail });
+        callback({ 
+          email: userEmail,
+          getIdToken: vi.fn().mockResolvedValue('mock-firebase-token')
+        });
         return unsubscribeFn;
       });
 
@@ -1246,7 +1264,10 @@ describe('Dashboard Component', () => {
       const userEmail = 'test@example.com';
       
       mockOnAuthStateChanged.mockImplementation((_auth: any, callback: any) => {
-        callback({ email: userEmail });
+        callback({ 
+          email: userEmail,
+          getIdToken: vi.fn().mockResolvedValue('mock-firebase-token')
+        });
         return unsubscribeFn;
       });
 
@@ -1307,7 +1328,10 @@ describe('Dashboard Component', () => {
       const userEmail = 'test@example.com';
       
       mockOnAuthStateChanged.mockImplementation((_auth: any, callback: any) => {
-        callback({ email: userEmail });
+        callback({ 
+          email: userEmail,
+          getIdToken: vi.fn().mockResolvedValue('mock-firebase-token')
+        });
         return unsubscribeFn;
       });
 
@@ -1367,7 +1391,10 @@ describe('Dashboard Component', () => {
       const userEmail = 'test@example.com';
       
       mockOnAuthStateChanged.mockImplementation((_auth: any, callback: any) => {
-        callback({ email: userEmail });
+        callback({ 
+          email: userEmail,
+          getIdToken: vi.fn().mockResolvedValue('mock-firebase-token')
+        });
         return unsubscribeFn;
       });
 
@@ -1425,7 +1452,10 @@ describe('Dashboard Component', () => {
       const userEmail = 'test@example.com';
       
       mockOnAuthStateChanged.mockImplementation((_auth: any, callback: any) => {
-        callback({ email: userEmail });
+        callback({ 
+          email: userEmail,
+          getIdToken: vi.fn().mockResolvedValue('mock-firebase-token')
+        });
         return unsubscribeFn;
       });
 
@@ -1461,7 +1491,10 @@ describe('Dashboard Component', () => {
       const userEmail = 'test@example.com';
       
       mockOnAuthStateChanged.mockImplementation((_auth: any, callback: any) => {
-        callback({ email: userEmail });
+        callback({ 
+          email: userEmail,
+          getIdToken: vi.fn().mockResolvedValue('mock-firebase-token')
+        });
         return unsubscribeFn;
       });
 
@@ -1500,7 +1533,10 @@ describe('Dashboard Component', () => {
       const userEmail = 'test@example.com';
       
       mockOnAuthStateChanged.mockImplementation((_auth: any, callback: any) => {
-        callback({ email: userEmail });
+        callback({ 
+          email: userEmail,
+          getIdToken: vi.fn().mockResolvedValue('mock-firebase-token')
+        });
         return unsubscribeFn;
       });
 
@@ -1531,7 +1567,10 @@ describe('Dashboard Component', () => {
       const userEmail = 'test@example.com';
       
       mockOnAuthStateChanged.mockImplementation((_auth: any, callback: any) => {
-        callback({ email: userEmail });
+        callback({ 
+          email: userEmail,
+          getIdToken: vi.fn().mockResolvedValue('mock-firebase-token')
+        });
         return unsubscribeFn;
       });
 
@@ -1573,7 +1612,10 @@ describe('Dashboard Component', () => {
       const userEmail = 'test@example.com';
       
       mockOnAuthStateChanged.mockImplementation((_auth: any, callback: any) => {
-        callback({ email: userEmail });
+        callback({ 
+          email: userEmail,
+          getIdToken: vi.fn().mockResolvedValue('mock-firebase-token')
+        });
         return unsubscribeFn;
       });
 
@@ -1638,7 +1680,10 @@ describe('Dashboard Component', () => {
       const userEmail = 'test@example.com';
       
       mockOnAuthStateChanged.mockImplementation((_auth: any, callback: any) => {
-        callback({ email: userEmail });
+        callback({ 
+          email: userEmail,
+          getIdToken: vi.fn().mockResolvedValue('mock-firebase-token')
+        });
         return unsubscribeFn;
       });
 

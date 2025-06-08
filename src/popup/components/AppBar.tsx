@@ -6,9 +6,18 @@ import logoutIcon from '../../assets/logout.svg'
 import { getAuth, onAuthStateChanged } from 'firebase/auth'
 import { isDevelopment } from '../../services/api.config'
 
+interface UserInfo {
+  displayName: string;
+  email: string;
+  photoURL?: string;
+  photoUrl?: string;
+  extensionId?: string;
+}
+
 const AppBar = () => {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
 
   useEffect(() => {
     const auth = getAuth();
@@ -20,15 +29,31 @@ const AppBar = () => {
         setIsAuthenticated(true);
         // Store email in chrome storage when we get it from auth
         await chrome.storage.local.set({ userEmail: user.email });
+        
+        // Store user info if available
+        if (user.displayName || user.photoURL) {
+          const userInfoData: UserInfo = {
+            displayName: user.displayName || user.email.split('@')[0],
+            email: user.email,
+            photoURL: user.photoURL || undefined
+          };
+          setUserInfo(userInfoData);
+          await chrome.storage.local.set({ userInfo: userInfoData });
+        }
       } else {
         // If we don't have a user email from auth state, try to get it from storage
-        chrome.storage.local.get(['userEmail'], (result) => {
+        chrome.storage.local.get(['userEmail', 'userInfo'], (result) => {
           if (result.userEmail) {
             setUserEmail(result.userEmail);
             setIsAuthenticated(true);
+            
+            if (result.userInfo) {
+              setUserInfo(result.userInfo);
+            }
           } else {
             setUserEmail(null);
             setIsAuthenticated(false);
+            setUserInfo(null);
           }
         });
       }
@@ -40,6 +65,10 @@ const AppBar = () => {
       if (message.type === 'LOGOUT') {
         console.log('Received logout message from web app');
         handleLogout();
+        sendResponse({ success: true });
+      } else if (message.type === 'UPDATE_USER_INFO' && message.data) {
+        setUserInfo(message.data);
+        chrome.storage.local.set({ userInfo: message.data });
         sendResponse({ success: true });
       }
       return true; // Keep the message channel open for async response
@@ -68,7 +97,8 @@ const AppBar = () => {
         'userEmail',
         'firebaseToken',
         'tokenTimestamp',
-        'userId'
+        'userId',
+        'userInfo'
       ]);
       
       console.log('Logout completed successfully');
@@ -84,7 +114,7 @@ const AppBar = () => {
       // Determine the settings URL based on environment
       const webAppBaseUrl = isDevelopment 
         ? 'http://localhost:5173'
-        : 'https://canvastonotion.netlify.app';
+        : 'https://canvastonotion.io';
         
       // Open the settings page in a new tab
       chrome.tabs.create({ url: `${webAppBaseUrl}/settings` })
@@ -94,13 +124,31 @@ const AppBar = () => {
     }
   };
 
+  // Get the profile image URL - check both photoURL and photoUrl for compatibility
+  const getProfileImage = () => {
+    if (userInfo?.photoURL) {
+      return userInfo.photoURL;
+    } else if (userInfo?.photoUrl) {
+      return userInfo.photoUrl;
+    }
+    return defaultProfile;
+  };
+
   return (
     <div className={styles.appBar}>
       <div className={styles.userInfo}>
-        <img src={defaultProfile} alt={isAuthenticated ? "User Profile" : "Guest Profile"} className={styles.profileImage} />
+        <img 
+          src={getProfileImage()} 
+          alt={isAuthenticated ? "User Profile" : "Guest Profile"} 
+          className={styles.profileImage}
+          onError={(e) => {
+            // Fallback to default profile if image fails to load
+            (e.target as HTMLImageElement).src = defaultProfile;
+          }}
+        />
         <div className={styles.userText}>
           <div className={styles.userName}>
-            {isAuthenticated ? userEmail?.split('@')[0] : 'Guest'}
+            {userInfo?.displayName || (isAuthenticated ? userEmail?.split('@')[0] : 'Guest')}
           </div>
           <div className={styles.userStatus}>
             {isAuthenticated ? 'Signed In' : 'Not Signed In'}
