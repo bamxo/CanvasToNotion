@@ -89,16 +89,25 @@ const AppBar = () => {
       const auth = getAuth();
       await auth.signOut();
       
-      // Call the logout API endpoint
+      // Call the logout API endpoints
       try {
         await fetch('http://api.canvastonotion.io/.netlify/functions/auth/logout', {
           method: 'POST',
           credentials: 'include'
         });
-        console.log('Logout API call completed');
+        
+        // Call the additional cookie state clear endpoint in production
+        if (!isDevelopment) {
+          await fetch('https://api.canvastonotion.io/.netlify/functions/cookie-state/clear-authenticated', {
+            method: 'POST',
+            credentials: 'include'
+          });
+        }
+        
+        console.log('Logout API calls completed');
       } catch (apiError) {
         console.error('Error calling logout API:', apiError);
-        // Continue with logout process even if API call fails
+        // Continue with logout process even if API calls fail
       }
       
       // Clear storage
