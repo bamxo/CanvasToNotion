@@ -74,7 +74,7 @@ function App() {
       if (message.type === 'LOGIN_SUCCESS') {
         console.log('Setting authenticated to true');
         setIsAuthenticated(true);
-      } else if (message.type === 'LOGOUT') {
+      } else if (message.type === 'LOGOUT_SUCCESS' || message.type === 'LOGOUT') {
         console.log('Logout message received, resetting state...');
         setIsAuthenticated(false);
         setSelectedPage(false);

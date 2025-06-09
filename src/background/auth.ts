@@ -159,6 +159,30 @@ async function checkAuthCookie() {
         }
       } else {
         console.log('No authentication cookie found');
+        
+        // Check if user is currently signed in
+        const user = auth.currentUser;
+        const { userId } = await chrome.storage.local.get(['userId']);
+        
+        if (user || userId) {
+          console.log('User is signed in but cookie is missing, signing out...');
+          // Sign out from Firebase
+          await auth.signOut();
+          
+          // Clear storage
+          await chrome.storage.local.remove([
+            'firebaseToken',
+            'tokenTimestamp',
+            'userEmail',
+            'userId',
+            'canvasToken',
+            'userInfo'
+          ]);
+          
+          // Notify popup
+          chrome.runtime.sendMessage({ type: 'LOGOUT_SUCCESS' });
+          console.log('Successfully logged out user due to missing auth cookie');
+        }
       }
     } catch (error) {
       console.error('Error checking for authentication cookie:', error);
@@ -181,6 +205,9 @@ chrome.runtime.onInstalled.addListener(async () => {
   console.log('Extension installed/updated, checking for cookie authentication...');
   await checkAuthCookie();
 });
+
+// Set up periodic token refresh check
+setInterval(checkTokenRefresh, 5 * 60 * 1000); // Check every 5 minutes 
 
 // Listen for popup connection to check cookie authentication
 chrome.runtime.onConnect.addListener((port) => {
@@ -288,9 +315,19 @@ chrome.runtime.onMessageExternal.addListener(
 // Also check authentication state when the popup is opened
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'CHECK_AUTH') {
-    checkAuthCookie().then(isAuthenticated => {
+    console.log('Received CHECK_AUTH message, checking authentication status...');
+    
+    // In production, always check if the auth cookie exists
+    if (import.meta.env.MODE === 'production') {
+      checkAuthCookie().then(isAuthenticated => {
+        sendResponse({ isAuthenticated });
+      });
+    } else {
+      // In development, just check if we have a user
+      const isAuthenticated = !!auth.currentUser;
       sendResponse({ isAuthenticated });
-    });
+    }
+    
     return true; // Keep the message channel open for async response
   }
 });
@@ -362,7 +399,4 @@ chrome.tabs.onActivated.addListener((activeInfo) => {
     console.log('Tab activated, checking for cookie authentication...');
     checkAuthCookie();
   }
-});
-
-// Set up periodic token refresh check
-setInterval(checkTokenRefresh, 5 * 60 * 1000); // Check every 5 minutes 
+}); 

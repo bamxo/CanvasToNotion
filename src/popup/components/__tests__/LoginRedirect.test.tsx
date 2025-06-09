@@ -195,11 +195,11 @@ describe('LoginRedirect Component', () => {
     
     // Wait for component to render
     await waitFor(() => {
-      expect(screen.getByText(/Sign In/i)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Sign In/i })).toBeInTheDocument();
     });
     
     // Click on login button
-    fireEvent.click(screen.getByText(/Sign In/i));
+    fireEvent.click(screen.getByRole('button', { name: /Sign In/i }));
     
     // Verify that the chrome tab was created with local URL
     expect(mockChrome.tabs.create).toHaveBeenCalledWith({ url: 'http://localhost:5173/lookup' });
@@ -216,15 +216,22 @@ describe('LoginRedirect Component', () => {
       callback([{ url: 'https://example.canvas.com/course/123' }]);
     });
     
+    // Mock the auth check response to resolve the loading state
+    mockChrome.runtime.sendMessage.mockImplementation((message: any, callback: any) => {
+      if (message.type === 'CHECK_AUTH') {
+        callback({ isAuthenticated: false });
+      }
+    });
+    
     render(<LoginRedirect />);
     
-    // Wait for component to render
+    // Wait for component to render and finish loading
     await waitFor(() => {
-      expect(screen.getByText(/Sign In/i)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Sign In/i })).toBeInTheDocument();
     });
     
     // Click on login button
-    fireEvent.click(screen.getByText(/Sign In/i));
+    fireEvent.click(screen.getByRole('button', { name: /Sign In/i }));
     
     // Verify that the chrome tab was created with production URL
     expect(mockChrome.tabs.create).toHaveBeenCalledWith({ url: 'https://canvastonotion.io/lookup' });
@@ -243,15 +250,22 @@ describe('LoginRedirect Component', () => {
       callback([{ url: 'https://example.canvas.com/course/123' }]);
     });
     
+    // Mock the auth check response in case the component is in production mode
+    mockChrome.runtime.sendMessage.mockImplementation((message: any, callback: any) => {
+      if (message.type === 'CHECK_AUTH') {
+        callback({ isAuthenticated: false });
+      }
+    });
+    
     render(<LoginRedirect />);
     
     // Wait for component to render
     await waitFor(() => {
-      expect(screen.getByText(/Sign In/i)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Sign In/i })).toBeInTheDocument();
     });
     
     // Click on login button which will trigger the error
-    fireEvent.click(screen.getByText(/Sign In/i));
+    fireEvent.click(screen.getByRole('button', { name: /Sign In/i }));
     
     // Check if error message is displayed
     await waitFor(() => {
