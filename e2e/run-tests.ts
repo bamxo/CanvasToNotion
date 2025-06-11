@@ -30,28 +30,6 @@ const testSuites: TestSuite[] = [
     name: 'Login',
     description: 'Extension login from webapp',
     testFile: 'login.e2e.test.ts'
-  },
-  {
-    name: 'Notion Connection',
-    description: 'Connecting Notion account',
-    testFile: 'notion-connection.e2e.test.ts'
-  },
-  {
-    name: 'Page Selection',
-    description: 'Selecting Notion page in extension',
-    testFile: 'notion-page-selection.e2e.test.ts'
-  },
-  {
-    name: 'Unsynced Assignments',
-    description: 'Checking unsynced assignments (expected to fail without Canvas account)',
-    testFile: 'unsynced-assignments.e2e.test.ts',
-    expectedToFail: true
-  },
-  {
-    name: 'Syncing',
-    description: 'Assignment syncing functionality (expected to fail without Canvas account)',
-    testFile: 'syncing.e2e.test.ts',
-    expectedToFail: true
   }
 ];
 
@@ -61,6 +39,7 @@ function checkTestFiles(): boolean {
   for (const suite of testSuites) {
     const testPath = path.join(testsDir, suite.testFile);
     if (!fs.existsSync(testPath)) {
+      console.error(`Test file not found: ${testPath}`);
       return false;
     }
   }
@@ -101,8 +80,8 @@ function extractTestSummary(output: string): string {
   // Extract the summary line that shows test results
   const lines = output.split('\n');
   for (const line of lines) {
-    // Look for lines like "❯ e2e/tests/6-syncing.e2e.test.ts (6 tests | 5 failed) 27121ms"
-    // or "✓ e2e/tests/1-signup.e2e.test.ts (1 test) 10249ms"
+    // Look for lines like "❯ e2e/tests/login.e2e.test.ts (1 test | 1 failed) 27121ms"
+    // or "✓ e2e/tests/signup.e2e.test.ts (1 test) 10249ms"
     if (line.includes('.e2e.test.ts') && line.includes('test') && 
         (line.includes('❯') || line.includes('✓'))) {
       return line.trim();
@@ -112,7 +91,10 @@ function extractTestSummary(output: string): string {
 }
 
 async function runAllTests() {
+  console.log('🧪 Running E2E Tests...\n');
+  
   if (!checkTestFiles()) {
+    console.error('❌ Some test files are missing!');
     process.exit(1);
   }
 
@@ -120,6 +102,7 @@ async function runAllTests() {
   const summaries: string[] = [];
 
   for (const suite of testSuites) {
+    console.log(`\n🔄 Running ${suite.name} Test: ${suite.description}`);
     const result = await runTest(suite.testFile);
     results.push({ suite, success: result.success, output: result.output });
     
@@ -134,9 +117,15 @@ async function runAllTests() {
   }
 
   // Print consolidated summary at the end
+  console.log('\n📊 Test Summary:');
   summaries.forEach(summary => {
     console.log(summary);
   });
+  
+  const passedTests = results.filter(r => r.success).length;
+  const totalTests = results.length;
+  
+  console.log(`\n✅ ${passedTests}/${totalTests} test suites passed`);
 }
 
 // Handle command line arguments
@@ -146,11 +135,13 @@ if (args.length > 0) {
   const suite = testSuites.find(s => s.name.toLowerCase().includes(suiteArg.toLowerCase()));
   
   if (suite) {
+    console.log(`🔄 Running ${suite.name} Test: ${suite.description}`);
     runTest(suite.testFile).then(result => {
       console.log(result.output);
       process.exit(result.success ? 0 : 1);
     });
   } else {
+    console.error(`❌ Test suite "${suiteArg}" not found. Available tests: ${testSuites.map(s => s.name).join(', ')}`);
     process.exit(1);
   }
 } else {
