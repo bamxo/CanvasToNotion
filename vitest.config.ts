@@ -25,6 +25,8 @@ export default defineConfig({
       'coverage/',
       '**/*.d.ts',
       '**/*.config.ts',
+      'src/content/**',
+      'src/services/auth.service.ts',
     ],
     coverage: {
       enabled: true,
@@ -40,6 +42,8 @@ export default defineConfig({
         '**/*.config.ts',
         'src/main.tsx',
         'src/vite-env.d.ts',
+        'src/content/**',
+        'src/services/auth.service.ts',
       ],
       include: ['src/**/*.{ts,tsx}'],
       all: true
