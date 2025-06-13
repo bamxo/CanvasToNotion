@@ -4,11 +4,19 @@ import LoginRedirect from './popup/components/LoginRedirect'
 import Dashboard from './popup/components/Dashboard'
 import PageSelector from './popup/components/PageSelector'
 
+interface NotionPage {
+  id: string;
+  title: string;
+  icon?: string;
+  type?: string;
+}
+
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [checkingAuth, setCheckingAuth] = useState(true)
   const [isCanvasPage, setIsCanvasPage] = useState(false)
-  const [selectedPage, setSelectedPage] = useState(false)
+  const [selectedPage, setSelectedPage] = useState<NotionPage | null>(null)
+  const [showPageSelector, setShowPageSelector] = useState(false)
 
   useEffect(() => {
     // Create a connection to the background script in production
@@ -63,8 +71,11 @@ function App() {
       if (changes.canvasToken) {
         setIsAuthenticated(!!changes.canvasToken.newValue);
       }
-      if (changes.selectedPage) {
-        setSelectedPage(!!changes.selectedPage.newValue);
+      if (changes.selectedNotionPage) {
+        setSelectedPage(changes.selectedNotionPage.newValue || null);
+      }
+      if (changes.showPageSelector) {
+        setShowPageSelector(!!changes.showPageSelector.newValue);
       }
     };
 
@@ -77,7 +88,8 @@ function App() {
       } else if (message.type === 'LOGOUT_SUCCESS' || message.type === 'LOGOUT') {
         console.log('Logout message received, resetting state...');
         setIsAuthenticated(false);
-        setSelectedPage(false);
+        setSelectedPage(null);
+        setShowPageSelector(false);
       }
     };
 
@@ -101,11 +113,23 @@ function App() {
 
   // Helper function to check initial auth state from storage
   const checkInitialAuthState = () => {
-    chrome.storage.local.get(['canvasToken', 'selectedPage'], (result) => {
+    chrome.storage.local.get(['canvasToken', 'selectedNotionPage', 'showPageSelector'], (result) => {
       console.log('Initial state from storage:', result);
       setIsAuthenticated(!!result.canvasToken);
-      setSelectedPage(!!result.selectedPage);
+      setSelectedPage(result.selectedNotionPage || null);
+      setShowPageSelector(!!result.showPageSelector);
       setCheckingAuth(false);
+    });
+  };
+
+  const handlePageSelect = (page: NotionPage) => {
+    console.log('Page selected in App:', page);
+    setSelectedPage(page);
+    setShowPageSelector(false);
+    // Store the selected page and hide page selector
+    chrome.storage.local.set({ 
+      selectedNotionPage: page, 
+      showPageSelector: false 
     });
   };
 
@@ -128,19 +152,21 @@ function App() {
 
   console.log('Container style:', containerStyle);
   console.log('Is Canvas page (render):', isCanvasPage);
+  console.log('App render state:', { 
+    isAuthenticated, 
+    selectedPage: selectedPage ? { id: selectedPage.id, title: selectedPage.title } : null, 
+    showPageSelector 
+  });
 
   return (
     <div className={containerClasses} style={containerStyle}>
       <div className="card">
         {!isAuthenticated ? (
           <LoginRedirect />
-        ) : selectedPage ? (
-          <Dashboard />
+        ) : showPageSelector || !selectedPage ? (
+          <PageSelector onPageSelect={handlePageSelect} />
         ) : (
-          <PageSelector onPageSelect={() => {
-            chrome.storage.local.set({ selectedPage: true });
-            setSelectedPage(true);
-          }} />
+          <Dashboard selectedPage={selectedPage} />
         )}
       </div>
     </div>

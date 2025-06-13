@@ -9,7 +9,6 @@ import { useState, useEffect, useRef } from 'react'
 import styles from './Dashboard.module.css'
 import { getAuth, onAuthStateChanged } from 'firebase/auth'
 import AppBar from './AppBar'
-import PageSelector from './PageSelector'
 import PageSelectionContainer from './PageSelectionContainer'
 import UnsyncedContainer from './UnsyncedContainer'
 import SyncButton from './SyncButton'
@@ -27,6 +26,10 @@ interface SyncData {
   pageId: string;
 }
 
+interface DashboardProps {
+  selectedPage: NotionPage;
+}
+
 // Particle component
 const Particle = ({ delay }: { delay: number }) => {
   const style = {
@@ -38,13 +41,11 @@ const Particle = ({ delay }: { delay: number }) => {
   return <div className={styles.particle} style={style} />;
 };
 
-const Dashboard = () => {
+const Dashboard = ({ selectedPage }: DashboardProps) => {
   const [isLoading, setIsLoading] = useState(false)
   const [isComparing, setIsComparing] = useState(false)
   const [lastSync, setLastSync] = useState<string | null>(null)
   const [syncStatus, setSyncStatus] = useState<'success' | 'error' | 'partial' | null>(null)
-  const [showPageSelector, setShowPageSelector] = useState(false)
-  const [selectedPage, setSelectedPage] = useState<NotionPage | null>(null)
   const [userEmail, setUserEmail] = useState<string | null>(null)
   const [firebaseToken, setFirebaseToken] = useState<string | null>(null)
   const [unsyncedItems, setUnsyncedItems] = useState<UnsyncedItem[]>([])
@@ -95,20 +96,11 @@ const Dashboard = () => {
       }
     });
 
-    // Check if we have a stored page selection
-    chrome.storage.local.get(['selectedNotionPage', 'showPageSelector'], (result) => {
-      if (result.showPageSelector) {
-        setShowPageSelector(true);
-      } else if (result.selectedNotionPage) {
-        setSelectedPage(result.selectedNotionPage);
-      }
-    });
-
     // Cleanup auth listener
     return () => unsubscribe();
   }, []);
 
-  // New effect to trigger comparison when page is selected and authentication is available
+  // Trigger comparison when page is selected and authentication is available
   useEffect(() => {
     if (selectedPage && firebaseToken) {
       compareWithNotion();
@@ -432,24 +424,9 @@ const Dashboard = () => {
     }
   }
 
-  const handlePageSelect = (page: NotionPage) => {
-    console.log('Page selected:', page);
-    setSelectedPage(page)
-    setShowPageSelector(false)
-    // Store selected page in chrome storage
-    chrome.storage.local.set({ selectedNotionPage: page, showPageSelector: false });
-    // Compare will be triggered by the useEffect
-  }
-
   const handleChangePageClick = () => {
-    setShowPageSelector(true);
-    setSelectedPage(null);
-    // Store the state in chrome.storage.local
+    // Store the state in chrome.storage.local to trigger App component to show PageSelector
     chrome.storage.local.set({ selectedNotionPage: null, showPageSelector: true });
-  }
-
-  if (showPageSelector) {
-    return <PageSelector onPageSelect={handlePageSelect} />
   }
 
   // Debug log for button disabled state
@@ -469,7 +446,7 @@ const Dashboard = () => {
       <div className={`${styles.content} ${styles.fadeIn}`}>
         <PageSelectionContainer 
           selectedPage={selectedPage}
-          onPageSelect={() => setShowPageSelector(true)}
+          onPageSelect={handleChangePageClick}
           onChangePage={handleChangePageClick}
         />
 
