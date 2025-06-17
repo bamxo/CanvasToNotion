@@ -6,14 +6,17 @@
  */
 
 import { useState, useEffect, useRef } from 'react'
+import axios from 'axios'
 import styles from './Dashboard.module.css'
 import { getAuth, onAuthStateChanged } from 'firebase/auth'
 import AppBar from './AppBar'
 import PageSelectionContainer from './PageSelectionContainer'
 import UnsyncedContainer from './UnsyncedContainer'
 import SyncButton from './SyncButton'
+import NotionDisconnected from './NotionDisconnected'
+import TermSelector from './TermSelector'
 import { UnsyncedItem, transformCanvasAssignments } from '../utils/assignmentTransformer'
-import { isDevelopment, isProduction } from '../../services/api.config'
+import { isDevelopment, isProduction, ENDPOINTS } from '../../services/api.config'
 
 interface NotionPage {
   id: string;
@@ -24,6 +27,7 @@ interface NotionPage {
 
 interface SyncData {
   pageId: string;
+  termSystem?: 'quarter' | 'semester';
 }
 
 interface DashboardProps {
@@ -49,6 +53,9 @@ const Dashboard = ({ selectedPage }: DashboardProps) => {
   const [userEmail, setUserEmail] = useState<string | null>(null)
   const [firebaseToken, setFirebaseToken] = useState<string | null>(null)
   const [unsyncedItems, setUnsyncedItems] = useState<UnsyncedItem[]>([])
+  const [isNotionConnected, setIsNotionConnected] = useState<boolean | null>(null)
+  const [checkingConnection, setCheckingConnection] = useState(true)
+  const [selectedTerm, setSelectedTerm] = useState<'quarter' | 'semester'>('semester')
 
   // Generate array of particles with useRef to avoid re-creation on re-renders
   const particles = useRef(
@@ -100,12 +107,12 @@ const Dashboard = ({ selectedPage }: DashboardProps) => {
     return () => unsubscribe();
   }, []);
 
-  // Trigger comparison when page is selected and authentication is available
+  // Trigger comparison when page is selected, authentication is available, Notion is connected, or term changes
   useEffect(() => {
-    if (selectedPage && firebaseToken) {
+    if (selectedPage && firebaseToken && isNotionConnected === true) {
       compareWithNotion();
     }
-  }, [selectedPage, firebaseToken]);
+  }, [selectedPage, firebaseToken, isNotionConnected, selectedTerm]);
 
   // Debug log whenever auth or selectedPage changes
   useEffect(() => {
@@ -118,6 +125,66 @@ const Dashboard = ({ selectedPage }: DashboardProps) => {
       chrome.storage.local.set({ userEmail });
     }
   }, [userEmail, selectedPage, firebaseToken]);
+
+  // Check Notion connection
+  const checkNotionConnection = async () => {
+    try {
+      if (!firebaseToken) {
+        console.log('Waiting for firebase token...');
+        return false;
+      }
+
+      console.log('Checking Notion connection in Dashboard');
+      setCheckingConnection(true);
+      
+      const response = await axios.get(ENDPOINTS.CONNECTED, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${firebaseToken}`
+        },
+        timeout: 5000
+      });
+
+      console.log('Notion connection response:', response.data);
+      const isConnected = response.data.connected;
+      setIsNotionConnected(isConnected);
+      setCheckingConnection(false);
+      return isConnected;
+    } catch (err) {
+      console.error('Error checking Notion connection:', err);
+      setIsNotionConnected(false);
+      setCheckingConnection(false);
+      return false;
+    }
+  };
+
+  // Check connection when firebase token becomes available
+  useEffect(() => {
+    if (firebaseToken) {
+      checkNotionConnection();
+    }
+  }, [firebaseToken]);
+
+  // Load selected term from storage on component mount
+  useEffect(() => {
+    chrome.storage.local.get(['selectedTerm'], (result) => {
+      if (result.selectedTerm) {
+        setSelectedTerm(result.selectedTerm);
+      }
+    });
+  }, []);
+
+  // Handle term selection change
+  const handleTermChange = (term: 'quarter' | 'semester') => {
+    setSelectedTerm(term);
+    // Save to chrome storage
+    chrome.storage.local.set({ selectedTerm: term });
+    
+    // Clear current unsynced items to show loading state
+    setUnsyncedItems([]);
+    
+    console.log(`Term system changed to: ${term}`);
+  };
 
   // New function to compare Canvas assignments with Notion
   const compareWithNotion = async (): Promise<number> => {
@@ -132,6 +199,7 @@ const Dashboard = ({ selectedPage }: DashboardProps) => {
       // Prepare compare data
       const compareData = {
         pageId: selectedPage.id,
+        termSystem: selectedTerm,
       };
 
       console.log('Sending COMPARE message with data:', compareData);
@@ -215,6 +283,7 @@ const Dashboard = ({ selectedPage }: DashboardProps) => {
       // Prepare sync data
       const syncData: SyncData = {
         pageId: selectedPage.id,
+        termSystem: selectedTerm,
       };
 
       // Update timestamp regardless of final status
@@ -429,15 +498,53 @@ const Dashboard = ({ selectedPage }: DashboardProps) => {
     chrome.storage.local.set({ selectedNotionPage: null, showPageSelector: true });
   }
 
+  const handleNotionRetry = async (isAutoRetry = false) => {
+    console.log(`${isAutoRetry ? 'Auto' : 'Manual'} retry: checking Notion connection`);
+    await checkNotionConnection();
+  }
+
   // Debug log for button disabled state
-  const buttonDisabled = isLoading || !selectedPage || !firebaseToken;
+  const buttonDisabled = isLoading || !selectedPage || !firebaseToken || isNotionConnected !== true;
   console.log('Sync button state:', {
     isLoading,
     hasSelectedPage: !!selectedPage,
     hasFirebaseToken: !!firebaseToken,
+    isNotionConnected,
     isDisabled: buttonDisabled
   });
 
+  // Show loading state while checking connection (matching PageSelector logic)
+  if (checkingConnection || (firebaseToken && isNotionConnected === null)) {
+    return (
+      <div className={styles.container}>
+        <AppBar />
+        {particles}
+        <div className={styles.content}>
+          <div className={styles.loadingContainer}>
+            <div className={styles.loadingSpinner}></div>
+            <p className={styles.loadingText}>
+              {!firebaseToken ? 'Checking authentication...' : 'Checking Notion connection...'}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show NotionDisconnected if not connected
+  if (isNotionConnected === false) {
+    return (
+      <div className={styles.container}>
+        <AppBar />
+        {particles}
+        <div className={styles.content}>
+          <NotionDisconnected onRetry={handleNotionRetry} />
+        </div>
+      </div>
+    );
+  }
+
+  // Show main dashboard if connected
   return (
     <div className={styles.container}>
       <AppBar />
@@ -448,6 +555,12 @@ const Dashboard = ({ selectedPage }: DashboardProps) => {
           selectedPage={selectedPage}
           onPageSelect={handleChangePageClick}
           onChangePage={handleChangePageClick}
+        />
+
+        {/* Term Selector Section */}
+        <TermSelector 
+          selectedTerm={selectedTerm}
+          onTermChange={handleTermChange}
         />
 
         {/* Unsynced Items Section */}

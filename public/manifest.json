@@ -43,7 +43,9 @@
   ],
   "content_scripts": [
     {
-      "matches": ["*://*.instructure.com/*"],
+      "matches": [
+        "*://*.instructure.com/*"
+      ],
       "js": ["content.js"]
     }
   ],

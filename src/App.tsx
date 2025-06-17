@@ -3,6 +3,8 @@ import './App.css'
 import LoginRedirect from './popup/components/LoginRedirect'
 import Dashboard from './popup/components/Dashboard'
 import PageSelector from './popup/components/PageSelector'
+import CanvasRequired from './popup/components/CanvasRequired'
+import { getCurrentCanvasInfo, CanvasInfo } from './services/canvas/detection'
 
 interface NotionPage {
   id: string;
@@ -15,6 +17,7 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [checkingAuth, setCheckingAuth] = useState(true)
   const [isCanvasPage, setIsCanvasPage] = useState(false)
+  const [_, setCanvasInfo] = useState<CanvasInfo | null>(null)
   const [selectedPage, setSelectedPage] = useState<NotionPage | null>(null)
   const [showPageSelector, setShowPageSelector] = useState(false)
 
@@ -35,14 +38,29 @@ function App() {
       });
     }
 
-    // Check if current page is Canvas
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      const currentUrl = tabs[0]?.url || '';
-      console.log('Current URL:', currentUrl);
-      const isCanvas = currentUrl.includes('canvas');
-      console.log('Is Canvas page:', isCanvas);
-      setIsCanvasPage(isCanvas);
-    });
+    // Check if current page is Canvas using improved detection
+    const checkCanvasPage = async () => {
+      try {
+        const canvasInfo = await getCurrentCanvasInfo();
+        console.log('Canvas detection result:', canvasInfo);
+        setIsCanvasPage(canvasInfo.isCanvas);
+        setCanvasInfo(canvasInfo);
+        
+        // Store Canvas info if detected
+        if (canvasInfo.isCanvas) {
+          chrome.storage.local.set({ 
+            canvasInfo: canvasInfo,
+            canvasBaseUrl: canvasInfo.apiUrl 
+          });
+        }
+      } catch (error) {
+        console.error('Error detecting Canvas page:', error);
+        setIsCanvasPage(false);
+        setCanvasInfo(null);
+      }
+    };
+    
+    checkCanvasPage();
 
     // In production, check for cookie authentication first
     if (import.meta.env.MODE === 'production') {
@@ -133,6 +151,26 @@ function App() {
     });
   };
 
+  const handleCanvasRetry = async () => {
+    try {
+      const canvasInfo = await getCurrentCanvasInfo();
+      console.log('Canvas retry result:', canvasInfo);
+      setIsCanvasPage(canvasInfo.isCanvas);
+      setCanvasInfo(canvasInfo);
+      
+      if (canvasInfo.isCanvas) {
+        chrome.storage.local.set({ 
+          canvasInfo: canvasInfo,
+          canvasBaseUrl: canvasInfo.apiUrl 
+        });
+      }
+    } catch (error) {
+      console.error('Error retrying Canvas detection:', error);
+      setIsCanvasPage(false);
+      setCanvasInfo(null);
+    }
+  };
+
   if (checkingAuth) {
     return <div>Loading...</div>
   }
@@ -163,6 +201,8 @@ function App() {
       <div className="card">
         {!isAuthenticated ? (
           <LoginRedirect />
+        ) : !isCanvasPage ? (
+          <CanvasRequired onRetry={handleCanvasRetry} />
         ) : showPageSelector || !selectedPage ? (
           <PageSelector onPageSelect={handlePageSelect} />
         ) : (
