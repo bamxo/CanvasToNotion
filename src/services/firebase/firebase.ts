@@ -1,7 +1,6 @@
-// firebase.ts - Firebase Configuration and Initialization
+// firebase.ts - Firebase Configuration and Initialization (Database only)
 import { initializeApp, FirebaseApp, getApps, getApp } from 'firebase/app';
 import { getDatabase, Database } from 'firebase/database';
-import { getAuth, Auth } from 'firebase/auth';
 
 // Firebase configuration interface
 export interface FirebaseConfig {
@@ -16,22 +15,21 @@ export interface FirebaseConfig {
 
 // Default Firebase configuration
 const defaultFirebaseConfig: FirebaseConfig = {
-  apiKey: "AIzaSyDJ4TOuZQq2715GWU9JlfCE-YU8CXkPNdU",
-  authDomain: "canvas2notion-3cd84.firebaseapp.com",
-  databaseURL: "https://canvas2notion-3cd84-default-rtdb.firebaseio.com",
-  projectId: "canvas2notion-3cd84",
-  storageBucket: "canvas2notion-3cd84.firebasestorage.app",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
 // Firebase app instance
 let firebaseApp: FirebaseApp | null = null;
 let database: Database | null = null;
-let auth: Auth | null = null;
 
 /**
- * Initialize Firebase with custom or default configuration
+ * Initialize Firebase with custom or default configuration (Database only)
  * @param config - Optional custom Firebase configuration
  * @returns Firebase app instance
  */
@@ -75,27 +73,6 @@ export const getFirebaseDatabase = (): Database => {
 };
 
 /**
- * Get Firebase auth instance
- * @returns Auth instance
- */
-export const getFirebaseAuth = (): Auth => {
-  try {
-    if (!firebaseApp) {
-      firebaseApp = initializeFirebase();
-    }
-    
-    if (!auth) {
-      auth = getAuth(firebaseApp);
-    }
-    
-    return auth;
-  } catch (error) {
-    console.error('Error getting Firebase auth:', error);
-    throw new Error(`Failed to get Firebase auth: ${error instanceof Error ? error.message : 'Unknown error'}`);
-  }
-};
-
-/**
  * Get Firebase app instance
  * @returns Firebase app instance or null if not initialized
  */
@@ -117,7 +94,6 @@ export const isFirebaseInitialized = (): boolean => {
 export const resetFirebaseInstances = (): void => {
   firebaseApp = null;
   database = null;
-  auth = null;
 };
 
 /**
@@ -151,7 +127,7 @@ export const getFirebaseConfig = (): Omit<FirebaseConfig, 'apiKey'> => {
   return sanitizedConfig;
 };
 
-// Initialize Firebase on module load
+// Initialize Firebase on module load (Database only)
 try {
   initializeFirebase();
 } catch (error) {
@@ -163,7 +139,6 @@ export { defaultFirebaseConfig };
 export default {
   initializeFirebase,
   getFirebaseDatabase,
-  getFirebaseAuth,
   getFirebaseApp,
   isFirebaseInitialized,
   resetFirebaseInstances,

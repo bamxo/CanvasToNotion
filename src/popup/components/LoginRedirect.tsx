@@ -6,11 +6,11 @@
  * and provides functionality to redirect to the web application for authentication.
  */
 
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import styles from './LoginRedirect.module.css'
 import logo from '../../assets/c2n_logo dark.svg'
-import { signInWithEmail } from '../../services/auth.service';
-import { isDevelopment } from '../../services/api.config';
+import { signInWithEmail } from '../../services/auth.service'
+import { configService } from '../../services/config'
 
 // Particle component
 const Particle = ({ delay }: { delay: number }) => {
@@ -42,7 +42,7 @@ const LoginRedirect = () => {
     });
 
     // Check for cookie authentication in production mode
-    if (!isDevelopment) {
+    if (!configService.isDevelopment()) {
       setIsLoading(true);
       console.log('Production mode detected in LoginRedirect, checking for cookie auth...');
       chrome.runtime.sendMessage({ type: 'CHECK_AUTH' }, (response) => {
@@ -72,9 +72,7 @@ const LoginRedirect = () => {
       setError(null)
       
       // Determine the login URL based on environment
-      const webAppBaseUrl = isDevelopment 
-        ? 'http://localhost:5173'
-        : 'https://canvastonotion.io';
+      const webAppBaseUrl = await configService.getWebAppBaseUrl();
       
       // Open the webapp login page in a new tab
       chrome.tabs.create({ url: `${webAppBaseUrl}/lookup` })

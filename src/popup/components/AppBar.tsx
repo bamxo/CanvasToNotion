@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import styles from './AppBar.module.css'
 import defaultProfile from '../../assets/default.svg'
 import settingIcon from '../../assets/setting.svg'
 import logoutIcon from '../../assets/logout.svg'
-import { getAuth, onAuthStateChanged } from 'firebase/auth'
-import { isDevelopment } from '../../services/api.config'
+import { configService } from '../../services/config'
+import { getAuth } from '../../services/chrome-auth.service'
 
 interface UserInfo {
   displayName: string;
@@ -23,7 +23,7 @@ const AppBar = () => {
     const auth = getAuth();
     
     // Set up auth state listener
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    const unsubscribe = auth.onIdTokenChanged(async (user) => {
       if (user?.email) {
         setUserEmail(user.email);
         setIsAuthenticated(true);
@@ -91,14 +91,16 @@ const AppBar = () => {
       
       // Call the logout API endpoints
       try {
-        await fetch('http://api.canvastonotion.io/.netlify/functions/auth/logout', {
+        const logoutUrl = await configService.getLogoutApiUrl();
+        await fetch(logoutUrl, {
           method: 'POST',
           credentials: 'include'
         });
         
         // Call the additional cookie state clear endpoint in production
-        if (!isDevelopment) {
-          await fetch('https://api.canvastonotion.io/.netlify/functions/cookie-state/clear-authenticated', {
+        if (!configService.isDevelopment()) {
+          const clearAuthUrl = await configService.getClearAuthUrl();
+          await fetch(clearAuthUrl, {
             method: 'POST',
             credentials: 'include'
           });
@@ -130,12 +132,10 @@ const AppBar = () => {
     }
   };
 
-  const handleSettings = () => {
+  const handleSettings = async () => {
     try {
       // Determine the settings URL based on environment
-      const webAppBaseUrl = isDevelopment 
-        ? 'http://localhost:5173'
-        : 'https://canvastonotion.io';
+      const webAppBaseUrl = await configService.getWebAppBaseUrl();
         
       // Open the settings page in a new tab
       chrome.tabs.create({ url: `${webAppBaseUrl}/settings` })

@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import axios from 'axios';
-import { getAuth, onAuthStateChanged } from 'firebase/auth';
+import { getAuth, AuthUser } from '../../services/chrome-auth.service';
 import styles from './PageSelector.module.css';
 import AppBar from './AppBar';
 import NotionDisconnected from './NotionDisconnected';
@@ -59,21 +59,19 @@ const PageSelector: React.FC<PageSelectorProps> = ({ onPageSelect }) => {
     console.log("Setting up auth state listener");
     const auth = getAuth();
     
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = auth.onIdTokenChanged((user: AuthUser | null) => {
       console.log('Auth state changed:', user?.email);
       if (user?.email) {
         setUserEmail(user.email);
-        // Get firebase token when user is authenticated
-        if (user.getIdToken) {
-          user.getIdToken().then(token => {
-            setFirebaseToken(token);
-            chrome.storage.local.set({ firebaseToken: token });
-          }).catch(error => {
-            console.error('Error getting ID token:', error);
-          });
-        } else {
-          console.log('user.getIdToken is not available');
-        }
+        // Fetch user token for API calls
+        user.getIdToken().then((token: string) => {
+          console.log('Token retrieved for API calls');
+          setFirebaseToken(token);
+          // Store token for component compatibility
+          chrome.storage.local.set({ firebaseToken: token });
+        }).catch((error: Error) => {
+          console.error('Error getting user token:', error);
+        });
       } else {
         // If we don't have a user from auth state, try to get from storage
         chrome.storage.local.get(['userEmail', 'firebaseToken'], (result) => {
@@ -116,7 +114,8 @@ const PageSelector: React.FC<PageSelectorProps> = ({ onPageSelect }) => {
       }
 
       console.log('Checking Notion connection');
-      const response = await axios.get(ENDPOINTS.CONNECTED, {
+      const connectedEndpoint = await ENDPOINTS.CONNECTED();
+      const response = await axios.get(connectedEndpoint, {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${firebaseToken}`
@@ -160,7 +159,8 @@ const PageSelector: React.FC<PageSelectorProps> = ({ onPageSelect }) => {
         throw new Error('Firebase token not found');
       }
 
-      const response = await axios.get(ENDPOINTS.PAGES, {
+      const pagesEndpoint = await ENDPOINTS.PAGES();
+      const response = await axios.get(pagesEndpoint, {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${firebaseToken}`

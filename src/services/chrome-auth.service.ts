@@ -2,7 +2,12 @@
 // Maintains same interface as Firebase Auth but uses extension-native APIs
 
 export interface UserCredential {
-  user: AuthUser;
+  user: {
+    uid: string;
+    email: string | null;
+    displayName: string | null;
+    photoURL: string | null;
+  };
 }
 
 export interface AuthUser {
@@ -75,11 +80,6 @@ export async function chromeIdentityLogin(): Promise<AuthUser> {
       }
     };
     
-    // Update current auth state and notify listeners
-    const auth = getAuth();
-    auth.currentUser = user;
-    authStateListeners.forEach(listener => listener(user));
-    
     return user;
   } catch (error) {
     console.error('Chrome Identity Login Error:', error);
@@ -97,13 +97,6 @@ export async function signInWithEmailAndPassword(email: string, password: string
   throw new Error('Email/password authentication not implemented in Chrome extension context');
 }
 
-export async function signInWithEmail(email: string, password: string): Promise<AuthUser> {
-  // For Chrome extensions, redirect to Google OAuth instead of email/password
-  // This maintains interface compatibility while using the proper auth flow
-  console.warn('Email/password auth not supported in Chrome extensions, using Google OAuth instead');
-  return chromeIdentityLogin();
-}
-
 // Mock Firebase Auth-like functions for compatibility
 export class GoogleAuthProvider {
   static credential(idToken: string | null, accessToken: string) {
@@ -118,15 +111,14 @@ export async function signInWithCredential(auth: any, credential: any): Promise<
   );
   const userInfo = await userInfoResponse.json();
   
-  const user: AuthUser = {
-    uid: userInfo.id,
-    email: userInfo.email,
-    displayName: userInfo.name,
-    photoURL: userInfo.picture,
-    getIdToken: async () => credential.accessToken
+  return {
+    user: {
+      uid: userInfo.id,
+      email: userInfo.email,
+      displayName: userInfo.name,
+      photoURL: userInfo.picture
+    }
   };
-  
-  return { user };
 }
 
 // Auth state management compatible with existing code
@@ -206,4 +198,4 @@ export function getAuth(): Auth {
   } catch (error) {
     console.warn('Failed to restore auth state:', error);
   }
-})();
+})(); 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FaLink, FaCog } from 'react-icons/fa';
 import styles from './PageSelector.module.css';
-import { isDevelopment } from '../../services/api.config';
+import { configService } from '../../services/config';
 
 interface NotionDisconnectedProps {
   onRetry: (isAutoRetry?: boolean) => void;
@@ -16,11 +16,9 @@ const NotionDisconnected: React.FC<NotionDisconnectedProps> = ({ onRetry }) => {
     return () => clearTimeout(timer);
   }, []);
 
-  const handleOpenSettings = () => {
+  const handleOpenSettings = async () => {
     // Determine the settings URL based on environment
-    const webAppBaseUrl = isDevelopment 
-      ? 'http://localhost:5173'
-      : 'https://canvastonotion.io';
+    const webAppBaseUrl = await configService.getWebAppBaseUrl();
     
     chrome.tabs.create({ url: `${webAppBaseUrl}/settings` });
     window.close();

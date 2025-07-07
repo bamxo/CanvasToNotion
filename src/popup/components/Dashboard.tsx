@@ -5,10 +5,10 @@
  * It shows sync status, recent syncs, and provides controls for manual syncing.
  */
 
-import { useState, useEffect, useRef } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import axios from 'axios'
 import styles from './Dashboard.module.css'
-import { getAuth, onAuthStateChanged } from 'firebase/auth'
+import { getAuth, AuthUser } from '../../services/chrome-auth.service'
 import AppBar from './AppBar'
 import PageSelectionContainer from './PageSelectionContainer'
 import UnsyncedContainer from './UnsyncedContainer'
@@ -17,6 +17,8 @@ import NotionDisconnected from './NotionDisconnected'
 import TermSelector from './TermSelector'
 import { UnsyncedItem, transformCanvasAssignments } from '../utils/assignmentTransformer'
 import { isDevelopment, isProduction, ENDPOINTS } from '../../services/api.config'
+import { configService } from '../../services/config'
+
 
 interface NotionPage {
   id: string;
@@ -32,6 +34,15 @@ interface SyncData {
 
 interface DashboardProps {
   selectedPage: NotionPage;
+}
+
+interface Assignment {
+  id: string;
+  name: string;
+  courseId: string;
+  due_at: string;
+  points_possible: number;
+  html_url: string;
 }
 
 // Particle component
@@ -68,21 +79,17 @@ const Dashboard = ({ selectedPage }: DashboardProps) => {
     const auth = getAuth();
     
     // Set up auth state listener
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = auth.onIdTokenChanged((user: AuthUser | null) => {
       console.log('Auth state changed:', user?.email);
       if (user?.email) {
         setUserEmail(user.email);
-        // Get firebase token when user is authenticated
-        if (user.getIdToken) {
-          user.getIdToken().then(token => {
-            setFirebaseToken(token);
-            chrome.storage.local.set({ firebaseToken: token });
-          }).catch(error => {
-            console.error('Error getting ID token:', error);
-          });
-        } else {
-          console.log('user.getIdToken is not available');
-        }
+        // Get auth token when user is authenticated
+        user.getIdToken().then((token: string) => {
+          setFirebaseToken(token);
+          chrome.storage.local.set({ firebaseToken: token });
+        }).catch((error: Error) => {
+          console.error('Error getting ID token:', error);
+        });
       } else {
         // If we don't have a user email from auth state, try to get it from storage
         chrome.storage.local.get(['userEmail', 'firebaseToken'], (result) => {
@@ -137,7 +144,8 @@ const Dashboard = ({ selectedPage }: DashboardProps) => {
       console.log('Checking Notion connection in Dashboard');
       setCheckingConnection(true);
       
-      const response = await axios.get(ENDPOINTS.CONNECTED, {
+      const connectedEndpoint = await ENDPOINTS.CONNECTED();
+      const response = await axios.get(connectedEndpoint, {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${firebaseToken}`
@@ -379,7 +387,6 @@ const Dashboard = ({ selectedPage }: DashboardProps) => {
 
   // Function to check sync status with exponential backoff
   const checkSyncStatus = async (assignmentCount: number = 0) => {
-    // Ensure we have a firebase token
     if (!firebaseToken) {
       console.error('Cannot check sync status: missing authentication token');
       setSyncStatus('error');
@@ -405,7 +412,7 @@ const Dashboard = ({ selectedPage }: DashboardProps) => {
         attempts++;
         
         // Fetch the sync status from the Netlify function
-        const statusUrl = `https://canvastonotion.netlify.app/.netlify/functions/notion/sync-status`;
+        const statusUrl = await configService.getApiEndpoint('/sync-status');
         
         console.log(`Checking sync status (attempt ${attempts}/${maxAttempts})...`);
         const response = await fetch(statusUrl, {

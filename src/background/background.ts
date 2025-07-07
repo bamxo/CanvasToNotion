@@ -1,5 +1,5 @@
 import { canvasApi } from '../services/canvas/api';
-import { API_BASE_URL, ENDPOINTS } from '../services/api.config';
+import { getApiBaseUrl, ENDPOINTS } from '../services/api.config';
 
 /**
  * Background module that provides core functionality for the Chrome extension
@@ -53,10 +53,12 @@ export function simplifyAssignmentsData(assignments: any[]) {
 // Check if server is reachable
 export async function checkServerStatus(): Promise<boolean> {
   try {
-    await fetch(API_BASE_URL, { method: 'HEAD' });
+    const apiBaseUrl = await getApiBaseUrl();
+    await fetch(apiBaseUrl, { method: 'HEAD' });
     return true;
   } catch (e) {
-    console.warn(`Server might not be running at ${API_BASE_URL}`);
+    const apiBaseUrl = await getApiBaseUrl();
+    console.warn(`Server might not be running at ${apiBaseUrl}`);
     return false;
   }
 }
@@ -113,7 +115,8 @@ export async function syncWithNotion(courses: any[], assignments: any[], message
       console.warn('Missing pageId, but continuing with sync attempt');
     }
     
-    const response = await fetch(ENDPOINTS.SYNC, {
+    const syncEndpoint = await ENDPOINTS.SYNC();
+    const response = await fetch(syncEndpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

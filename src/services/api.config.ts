@@ -3,6 +3,8 @@
  * Provides environment-specific API endpoints based on build mode
  */
 
+import { configService } from './config';
+
 // The environment is determined at build time by Vite
 const ENV = import.meta.env.VITE_APP_ENV || 'development';
 
@@ -13,7 +15,7 @@ const CONFIG = {
     apiPrefix: '/api/notion'
   },
   production: {
-    baseUrl: 'https://canvastonotion.netlify.app/.netlify/functions',
+    baseUrl: '', // Will be set dynamically
     apiPrefix: '/notion'
   }
 };
@@ -25,32 +27,37 @@ const currentConfig = CONFIG[ENV as keyof typeof CONFIG] || CONFIG.development;
 export const isDevelopment = ENV === 'development';
 export const isProduction = ENV === 'production';
 
-// Base URL for API calls
-export const API_BASE_URL = currentConfig.baseUrl;
+// Base URL for API calls - now dynamic
+export const getApiBaseUrl = async (): Promise<string> => {
+  return await configService.getApiBaseUrl();
+};
 
 // API prefix for endpoints
 export const API_PREFIX = currentConfig.apiPrefix;
 
 // Helper to construct full API endpoints
-export const getApiEndpoint = (endpoint: string): string => {
-  // Ensure endpoint starts with a slash if not already
-  const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-  return `${API_BASE_URL}${API_PREFIX}${normalizedEndpoint}`;
+export const getApiEndpoint = async (endpoint: string): Promise<string> => {
+  return await configService.getApiEndpoint(endpoint);
 };
 
-// Common endpoints
+// Common endpoints - now async functions
 export const ENDPOINTS = {
-  SYNC: getApiEndpoint('/sync'),
-  COMPARE: getApiEndpoint('/compare'),
-  CONNECTED: getApiEndpoint('/connected'),
-  PAGES: getApiEndpoint('/pages')
+  SYNC: async () => await getApiEndpoint('/sync'),
+  COMPARE: async () => await getApiEndpoint('/compare'),
+  CONNECTED: async () => await getApiEndpoint('/connected'),
+  PAGES: async () => await getApiEndpoint('/pages')
 };
+
+// Legacy sync export for backwards compatibility
+export const API_BASE_URL = ''; // Deprecated - use getApiBaseUrl() instead
 
 // Log configuration in development
 if (isDevelopment) {
-  console.log('API Configuration:', {
-    environment: ENV,
-    baseUrl: API_BASE_URL,
-    apiPrefix: API_PREFIX
-  });
+  configService.getApiBaseUrl().then(baseUrl => {
+    console.log('API Configuration:', {
+      environment: ENV,
+      baseUrl: baseUrl,
+      apiPrefix: API_PREFIX
+    });
+  }).catch(console.error);
 } 

@@ -19,13 +19,11 @@
     }
   },
   "permissions": [
-    "scripting",
     "storage",
     "activeTab",
     "tabs",
-    "identity",
-    "offscreen",
-    "cookies"
+    "cookies",
+    "identity"
   ],
   "externally_connectable": {
     "matches": [
@@ -49,11 +47,7 @@
       "js": ["content.js"]
     }
   ],
-  "oauth2": {
-    "client_id": "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com",
-    "scopes": ["openid", "email", "profile"
-  ]
-  },
+
   "content_security_policy": {
     "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
   },

@@ -1,20 +1,10 @@
 // db.js - Firebase User Data Utilities
 import { initializeApp } from 'firebase/app';
 import { getDatabase, ref, get, query, orderByChild, equalTo, update } from 'firebase/database';
+import { defaultFirebaseConfig } from './firebase';
 
-// Firebase configuration - replace with your actual config
-const firebaseConfig = {
-  apiKey: "AIzaSyDJ4TOuZQq2715GWU9JlfCE-YU8CXkPNdU",
-  authDomain: "canvas2notion-3cd84.firebaseapp.com",
-  databaseURL: "https://canvas2notion-3cd84-default-rtdb.firebaseio.com",
-  projectId: "canvas2notion-3cd84",
-  storageBucket: "canvas2notion-3cd84.firebasestorage.app",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID"
-};
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
+// Initialize Firebase using centralized configuration
+const app = initializeApp(defaultFirebaseConfig);
 const db = getDatabase(app);
 
 /**

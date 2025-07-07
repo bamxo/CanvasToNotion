@@ -1,14 +1,8 @@
-import { getAuth, signInWithCustomToken } from 'firebase/auth';
-import { initializeApp } from 'firebase/app';
+import { getAuth } from '../services/chrome-auth.service';
+import { configService } from '../services/config';
 
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID
-};
-
-console.log('Initializing Firebase with config:', { ...firebaseConfig, apiKey: '***' });
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
+// Use Chrome Identity API instead of Firebase Auth
+const auth = getAuth();
 
 // Function to check for authentication via cookie
 async function checkAuthCookie() {
@@ -16,15 +10,16 @@ async function checkAuthCookie() {
   if (import.meta.env.MODE === 'production') {
     console.log('Checking for authentication cookie in production mode...');
     try {
+      const cookieUrl = await configService.getCookieUrl();
       const cookie = await chrome.cookies.get({
         name: 'authToken',
-        url: 'https://canvastonotion.io/'
+        url: cookieUrl
       });
       
       if (cookie && cookie.value) {
         console.log('Found authentication cookie with length:', cookie.value.length);
         
-        // Use the cookie value as the Firebase auth token, ensuring it's properly formatted
+        // Use the cookie value as the auth token, ensuring it's properly formatted
         let token = cookie.value;
         
         // Check if the token needs decoding (if it's URL encoded)
@@ -46,80 +41,36 @@ async function checkAuthCookie() {
         
         // Store the token securely
         await chrome.storage.local.set({ 
-          firebaseToken: token,
+          authToken: token,
           tokenTimestamp: Date.now()
         });
         
-        // Sign in with the custom token
+        // Try to get user info from the token
         try {
-          console.log('Attempting to sign in with cookie token...');
-          const userCredential = await signInWithCustomToken(auth, token);
-          console.log('Successfully signed in with cookie token:', {
-            email: userCredential.user.email,
-            uid: userCredential.user.uid
-          });
-          
-          // Store user info
-          await chrome.storage.local.set({
-            userEmail: userCredential.user.email,
-            userId: userCredential.user.uid,
-            canvasToken: userCredential.user.uid // Add this to trigger App component update
-          });
-          
-          // Notify the popup about successful authentication
-          chrome.runtime.sendMessage({ type: 'LOGIN_SUCCESS' });
-          
-          return true;
-        } catch (authError: any) {
-          console.error('Error signing in with cookie token:', {
-            message: authError.message,
-            code: authError.code,
-            stack: authError.stack,
-            tokenLength: token.length
-          });
-          
-          // If token format seems to be the issue, try some common fixes
-          if (authError.code === 'auth/invalid-custom-token') {
-            console.log('Invalid custom token format detected, trying alternate approaches...');
-            
-            // Try to extract user information from the token if possible
-            // This is a best effort to get some user profile info
+          // Decode JWT token to get user info (assuming it's a JWT)
+          const tokenParts = token.split('.');
+          if (tokenParts.length === 3) {
             try {
-              // Check if token is a JWT and try to decode it
-              let userDisplayName = '';
-              let userPhotoURL = '';
-              let userEmail = '';
+              const payload = JSON.parse(atob(tokenParts[1]));
               
-              // JWT tokens are split by periods into three parts
-              if (token.split('.').length === 3) {
-                // Try to decode the payload (middle part)
-                const base64Payload = token.split('.')[1];
-                const payload = JSON.parse(atob(base64Payload.replace(/-/g, '+').replace(/_/g, '/')));
-                
-                console.log('Successfully decoded JWT payload');
-                
-                // Extract user info if available
-                userEmail = payload.email || '';
-                userDisplayName = payload.name || payload.display_name || '';
-                userPhotoURL = payload.picture || payload.photoURL || payload.photo_url || '';
-              }
-              
-              // Create a proper userInfo object
+              // Extract user information from token payload
               const userInfo = {
-                displayName: userDisplayName || 'Canvas User',
-                email: userEmail || 'user@canvastonotion.io',
-                photoURL: userPhotoURL || undefined
+                displayName: payload.name || payload.display_name || 'Canvas User',
+                email: payload.email || configService.getDefaultEmail(),
+                photoURL: payload.picture || payload.avatar_url || undefined,
+                uid: payload.sub || payload.user_id || 'direct-token-auth'
               };
               
-              // If we haven't already stored the token directly, try that
-              // This approach skips Firebase custom token auth and just uses the token for API calls
+              console.log('Extracted user info from token:', userInfo);
+              
+              // Store user info and set authentication state
               await chrome.storage.local.set({
-                firebaseToken: token,
+                authToken: token,
                 tokenTimestamp: Date.now(),
                 // Set these values to trigger the app to think we're authenticated
                 canvasToken: 'direct-token-auth',
                 userEmail: userInfo.email,
-                userId: 'direct-token-auth',
+                userId: userInfo.uid,
                 // Store proper user info for profile display
                 userInfo: userInfo
               });
@@ -136,13 +87,13 @@ async function checkAuthCookie() {
               // Fallback to generic user info
               const userInfo = {
                 displayName: 'Canvas User',
-                email: 'user@canvastonotion.io',
+                email: configService.getDefaultEmail(),
                 photoURL: undefined
               };
               
               // Store token with generic user info
               await chrome.storage.local.set({
-                firebaseToken: token,
+                authToken: token,
                 tokenTimestamp: Date.now(),
                 canvasToken: 'direct-token-auth',
                 userEmail: userInfo.email,
@@ -156,6 +107,8 @@ async function checkAuthCookie() {
               return true;
             }
           }
+        } catch (error) {
+          console.error('Error processing authentication token:', error);
         }
       } else {
         console.log('No authentication cookie found');
@@ -166,12 +119,12 @@ async function checkAuthCookie() {
         
         if (user || userId) {
           console.log('User is signed in but cookie is missing, signing out...');
-          // Sign out from Firebase
+          // Sign out from auth
           await auth.signOut();
           
           // Clear storage
           await chrome.storage.local.remove([
-            'firebaseToken',
+            'authToken',
             'tokenTimestamp',
             'userEmail',
             'userId',
@@ -185,45 +138,46 @@ async function checkAuthCookie() {
         }
       }
     } catch (error) {
-      console.error('Error checking for authentication cookie:', error);
+      console.error('Error checking authentication cookie:', error);
     }
   } else {
-    console.log('Not in production mode, skipping cookie authentication');
+    console.log('Development mode: skipping cookie authentication check');
   }
-  
-  return false;
 }
 
-// Check for cookie authentication on extension startup
-chrome.runtime.onStartup.addListener(async () => {
-  console.log('Extension started, checking for cookie authentication...');
-  await checkAuthCookie();
-});
+// Check authentication when background script loads
+checkAuthCookie();
 
-// Also check when the extension popup is opened
-chrome.runtime.onInstalled.addListener(async () => {
-  console.log('Extension installed/updated, checking for cookie authentication...');
-  await checkAuthCookie();
-});
-
-// Set up periodic token refresh check
-setInterval(checkTokenRefresh, 5 * 60 * 1000); // Check every 5 minutes 
-
-// Listen for popup connection to check cookie authentication
-chrome.runtime.onConnect.addListener((port) => {
-  if (port.name === 'popup') {
-    console.log('Popup connected, checking for cookie authentication...');
-    checkAuthCookie().then(isAuthenticated => {
-      if (isAuthenticated) {
-        port.postMessage({ type: 'COOKIE_AUTH_SUCCESS' });
-      }
-    });
+// Check for authentication via user data fetch
+chrome.runtime.onMessage.addListener(
+  async (message, sender, sendResponse) => {
+    console.log('Received message in background auth:', message.type);
     
-    port.onDisconnect.addListener(() => {
-      console.log('Popup disconnected');
-    });
+    if (message.type === 'CHECK_AUTH') {
+      console.log('Processing CHECK_AUTH request...');
+      try {
+        // In production, check for cookie authentication
+        if (import.meta.env.MODE === 'production') {
+          await checkAuthCookie();
+        }
+        
+        // Check storage for existing authentication
+        const { authToken, userId, userEmail } = await chrome.storage.local.get([
+          'authToken', 'userId', 'userEmail'
+        ]);
+        
+        const isAuthenticated = !!(authToken || userId);
+        console.log('Auth check result:', { isAuthenticated, hasToken: !!authToken, hasUserId: !!userId });
+        
+        sendResponse({ isAuthenticated });
+      } catch (error) {
+        console.error('Error in CHECK_AUTH:', error);
+        sendResponse({ isAuthenticated: false });
+      }
+      return true; // Keep message channel open for async response
+    }
   }
-});
+);
 
 // Listen for external messages from the web app
 chrome.runtime.onMessageExternal.addListener(
@@ -242,27 +196,40 @@ chrome.runtime.onMessageExternal.addListener(
         // Store the token securely
         console.log('Storing token in chrome.storage.local...');
         await chrome.storage.local.set({ 
-          firebaseToken: token,
+          authToken: token,
           tokenTimestamp: Date.now()
         });
         console.log('Token stored successfully');
 
-        // Sign in with the custom token
-        console.log('Attempting to sign in with custom token...');
-        const userCredential = await signInWithCustomToken(auth, token);
-        console.log('Successfully signed in with token:', {
-          email: userCredential.user.email,
-          uid: userCredential.user.uid
-        });
-
-        // Store user info
-        console.log('Storing user info in chrome.storage.local...');
-        await chrome.storage.local.set({
-          userEmail: userCredential.user.email,
-          userId: userCredential.user.uid,
-          canvasToken: userCredential.user.uid // Add this to trigger App component update
-        });
-        console.log('User info stored successfully');
+        // Get user info from the token if possible
+        try {
+          const tokenParts = token.split('.');
+          if (tokenParts.length === 3) {
+            const payload = JSON.parse(atob(tokenParts[1]));
+            const userInfo = {
+              displayName: payload.name || 'Canvas User',
+              email: payload.email || configService.getDefaultEmail(),
+              uid: payload.sub || payload.user_id || 'external-token-auth'
+            };
+            
+            // Store user info
+            console.log('Storing user info in chrome.storage.local...');
+            await chrome.storage.local.set({
+              userEmail: userInfo.email,
+              userId: userInfo.uid,
+              canvasToken: userInfo.uid,
+              userInfo: userInfo
+            });
+            console.log('User info stored successfully');
+          }
+        } catch (error) {
+          console.warn('Could not extract user info from token, using defaults:', error);
+          await chrome.storage.local.set({
+            userEmail: configService.getDefaultEmail(),
+            userId: 'external-token-auth',
+            canvasToken: 'external-token-auth'
+          });
+        }
 
         // Notify the popup about successful authentication
         console.log('Sending LOGIN_SUCCESS message to popup...');
@@ -275,128 +242,44 @@ chrome.runtime.onMessageExternal.addListener(
         });
 
         sendResponse({ success: true });
-      } catch (error: any) {
-        console.error('Error handling auth token:', {
-          message: error.message,
-          code: error.code,
-          stack: error.stack
-        });
-        sendResponse({ success: false, error: error.message });
+      } catch (error) {
+        console.error('Error processing AUTH_TOKEN:', error);
+        sendResponse({ success: false, error: error instanceof Error ? error.message : String(error) });
       }
-    } else if (message.type === 'LOGOUT') {
-      try {
-        console.log("Received logout request from web app");
-        // Sign out from Firebase
-        await auth.signOut();
-        
-        // Clear storage
-        await chrome.storage.local.remove([
-          'firebaseToken',
-          'tokenTimestamp',
-          'userEmail',
-          'userId',
-          'canvasToken'
-        ]);
-        
-        // Notify popup
-        chrome.runtime.sendMessage({ type: 'LOGOUT_SUCCESS' });
-        
-        console.log("Successfully logged out");
-        sendResponse({ success: true });
-      } catch (error: any) {
-        console.error("Error during logout:", error);
-        sendResponse({ success: false, error: error.message });
-      }
+      return true; // Keep message channel open for async response
     }
-    return true; // Keep the message channel open for async response
   }
 );
 
-// Also check authentication state when the popup is opened
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.type === 'CHECK_AUTH') {
-    console.log('Received CHECK_AUTH message, checking authentication status...');
+// Set up token refresh listener - compatible with Chrome Identity API
+setInterval(async () => {
+  try {
+    const { authToken, tokenTimestamp } = await chrome.storage.local.get(['authToken', 'tokenTimestamp']);
     
-    // In production, always check if the auth cookie exists
-    if (import.meta.env.MODE === 'production') {
-      checkAuthCookie().then(isAuthenticated => {
-        sendResponse({ isAuthenticated });
-      });
-    } else {
-      // In development, just check if we have a user
-      const isAuthenticated = !!auth.currentUser;
-      sendResponse({ isAuthenticated });
-    }
-    
-    return true; // Keep the message channel open for async response
-  }
-});
-
-// Set up token refresh listener
-auth.onIdTokenChanged(async (user) => {
-  console.log('Auth state changed:', {
-    hasUser: !!user,
-    email: user?.email,
-    uid: user?.uid
-  });
-  
-  if (user) {
-    try {
-      const token = await user.getIdToken(true); // Force refresh
-      console.log('Token refreshed, updating storage...');
-      await chrome.storage.local.set({ 
-        firebaseToken: token,
-        tokenTimestamp: Date.now()
-      });
-      console.log('Token refresh storage updated successfully');
-    } catch (error) {
-      console.error('Error refreshing token:', error);
-    }
-  }
-});
-
-// Function to check if token needs refresh (called periodically)
-export async function checkTokenRefresh() {
-  console.log('Checking if token needs refresh...');
-  const { firebaseToken, tokenTimestamp } = await chrome.storage.local.get(['firebaseToken', 'tokenTimestamp']);
-  
-  if (firebaseToken && tokenTimestamp) {
-    const tokenAge = Date.now() - tokenTimestamp;
-    console.log('Token age:', Math.round(tokenAge / 1000 / 60), 'minutes');
-    // Refresh if token is older than 50 minutes (tokens expire after 1 hour)
-    if (tokenAge > 50 * 60 * 1000) {
-      const user = auth.currentUser;
-      if (user) {
+    if (authToken && tokenTimestamp) {
+      const tokenAge = Date.now() - tokenTimestamp;
+      // Refresh token if it's older than 50 minutes (3000000 ms)
+      if (tokenAge > 3000000) {
+        console.log('Token is old, attempting refresh...');
+        
+        // Try to refresh using Chrome Identity API
         try {
-          console.log('Token is old, refreshing...');
-          const newToken = await user.getIdToken(true);
-          await chrome.storage.local.set({ 
-            firebaseToken: newToken,
-            tokenTimestamp: Date.now()
-          });
-          console.log('Token refreshed on check');
+          const result = await chrome.identity.getAuthToken({ interactive: false });
+          if (result.token) {
+            await chrome.storage.local.set({
+              authToken: result.token,
+              tokenTimestamp: Date.now()
+            });
+            console.log('Token refreshed successfully');
+          }
         } catch (error) {
-          console.error('Error refreshing token on check:', error);
+          console.warn('Token refresh failed:', error);
         }
-      } else if (import.meta.env.MODE === 'production') {
-        // In production, try to revalidate using cookie if no user is available
-        await checkAuthCookie();
       }
-    } else {
-      console.log('Token is still valid, no refresh needed');
     }
-  } else if (import.meta.env.MODE === 'production') {
-    // In production, try to get authentication from cookie if no token is available
-    await checkAuthCookie();
-  } else {
-    console.log('No token found in storage');
+  } catch (error) {
+    console.error('Error in token refresh:', error);
   }
-}
+}, 60000); // Check every minute
 
-// Check authentication when visibility changes (user comes back to the extension)
-chrome.tabs.onActivated.addListener((activeInfo) => {
-  if (import.meta.env.MODE === 'production') {
-    console.log('Tab activated, checking for cookie authentication...');
-    checkAuthCookie();
-  }
-}); 
+console.log('Background auth script initialized with Chrome Identity API'); 

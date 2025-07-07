@@ -35,7 +35,14 @@ export default defineConfig({
         inlineDynamicImports: false,
         preserveModules: false,
         preserveEntrySignatures: false
-      }
+      },
+      // Exclude Firebase modules that load external scripts
+      external: [
+        'firebase/auth',
+        '@firebase/auth',
+        'firebase/app-check',
+        '@firebase/app-check'
+      ]
     }
   },
   test: {

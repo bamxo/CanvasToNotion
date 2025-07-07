@@ -3,7 +3,7 @@ console.log('Background script initializing...');
 
 import { canvasApi } from '../services/canvas/api';
 import './auth';  // Import auth module to initialize token handling
-import { API_BASE_URL, ENDPOINTS } from '../services/api.config';
+import { getApiBaseUrl, ENDPOINTS } from '../services/api.config';
 
 console.log('Background script initialized, auth module imported');
 
@@ -13,7 +13,7 @@ chrome.runtime.onStartup.addListener(() => {
 });
 
 // Periodic ping to keep service worker alive
-setInterval(() => {
+const heartbeatInterval = setInterval(() => {
   console.log("Service worker heartbeat");
 }, 25000); // Every 25 seconds
 
@@ -39,9 +39,11 @@ async function syncWithNotion(courses: any[], assignments: any[], message: any) 
     
     // First, check if the server is reachable
     try {
-      await fetch(API_BASE_URL, { method: 'HEAD' });
+      const apiBaseUrl = await getApiBaseUrl();
+      await fetch(apiBaseUrl, { method: 'HEAD' });
     } catch (e) {
-      console.warn(`Server might not be running at ${API_BASE_URL}`);
+      const apiBaseUrl = await getApiBaseUrl();
+      console.warn(`Server might not be running at ${apiBaseUrl}`);
     }
     
     // Get the Firebase token from storage with better error handling
@@ -70,7 +72,8 @@ async function syncWithNotion(courses: any[], assignments: any[], message: any) 
     
     console.log('Sending sync payload:', payload);
     
-    const response = await fetch(ENDPOINTS.SYNC, {
+    const syncEndpoint = await ENDPOINTS.SYNC();
+    const response = await fetch(syncEndpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -128,9 +131,11 @@ async function compareWithNotion(courses: any[], assignments: any[], pageId: str
     
     // First, check if the server is reachable
     try {
-      await fetch(API_BASE_URL, { method: 'HEAD' });
+      const apiBaseUrl = await getApiBaseUrl();
+      await fetch(apiBaseUrl, { method: 'HEAD' });
     } catch (e) {
-      console.warn(`Server might not be running at ${API_BASE_URL}`);
+      const apiBaseUrl = await getApiBaseUrl();
+      console.warn(`Server might not be running at ${apiBaseUrl}`);
     }
     
     // Get the Firebase token from storage with better error handling
@@ -159,7 +164,8 @@ async function compareWithNotion(courses: any[], assignments: any[], pageId: str
     
     console.log('Sending compare payload:', payload);
     
-    const response = await fetch(ENDPOINTS.COMPARE, {
+    const compareEndpoint = await ENDPOINTS.COMPARE();
+    const response = await fetch(compareEndpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

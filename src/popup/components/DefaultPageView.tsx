@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FaFile, FaExclamationCircle, FaCog } from 'react-icons/fa';
 import styles from './PageSelector.module.css';
-import { isDevelopment } from '../../services/api.config';
+import { configService } from '../../services/config';
 
 interface NotionPage {
   id: string;
@@ -29,11 +29,9 @@ const DefaultPageView: React.FC<DefaultPageViewProps> = ({
     return () => clearTimeout(timer);
   }, []);
 
-  const handleOpenSettings = () => {
+  const handleOpenSettings = async () => {
     // Determine the settings URL based on environment
-    const webAppBaseUrl = isDevelopment 
-      ? 'http://localhost:5173'
-      : 'https://canvastonotion.netlify.app';
+    const webAppBaseUrl = await configService.getWebAppBaseUrl();
     
     chrome.tabs.create({ url: `${webAppBaseUrl}/settings` });
     window.close();
